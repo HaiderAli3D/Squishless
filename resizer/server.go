@@ -14,6 +14,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"math"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -38,6 +39,12 @@ const (
 	maxUploadBytes = 30 << 20   // per image file
 	maxPixels      = 50_000_000 // 50 MP
 	maxScale       = 4          // target may be at most 4x the source per dimension
+
+	// Energy tuning; defaults mirror fastcarve.DefaultBlurRadius / DefaultSobelThreshold.
+	defaultBlurRadius     = 2
+	maxBlurRadius         = 7
+	defaultSobelThreshold = 0
+	maxSobelThreshold     = 64
 )
 
 // resizeOptions mirrors fastcarve.Options so the HTTP layer can be tested
@@ -47,6 +54,9 @@ type resizeOptions struct {
 	ProtectFaces  bool
 	Protect       *image.Gray
 	Remove        *image.Gray
+
+	BlurRadius     int     // 0..7, box blur before Sobel
+	SobelThreshold float32 // 0..64, Sobel magnitudes at or below become 0
 }
 
 // resizeFn performs the content-aware resize. engine.go wires it to
@@ -270,6 +280,21 @@ func parseRequest(r *http.Request) (*resizeRequest, error) {
 		return nil, badRequest("faces must be 1 or 0")
 	}
 
+	blur, err := intField(r, "blur", defaultBlurRadius)
+	if err != nil {
+		return nil, err
+	}
+	if blur < 0 || blur > maxBlurRadius {
+		return nil, badRequest("blur must be between 0 and %d", maxBlurRadius)
+	}
+	sobel, err := floatField(r, "sobel", defaultSobelThreshold)
+	if err != nil {
+		return nil, err
+	}
+	if sobel < 0 || sobel > maxSobelThreshold {
+		return nil, badRequest("sobel must be between 0 and %d", maxSobelThreshold)
+	}
+
 	protect, err := maskField(r, "protect", sw, sh)
 	if err != nil {
 		return nil, err
@@ -284,6 +309,7 @@ func parseRequest(r *http.Request) (*resizeRequest, error) {
 		opt: resizeOptions{
 			Width: width, Height: height, ProtectFaces: faces,
 			Protect: protect, Remove: remove,
+			BlurRadius: blur, SobelThreshold: float32(sobel),
 		},
 		ext:     ext,
 		quality: quality,
@@ -320,6 +346,19 @@ func intField(r *http.Request, name string, def int) (int, error) {
 		return 0, badRequest("%s must be a whole number", name)
 	}
 	return n, nil
+}
+
+// floatField parses an optional finite number; NaN and infinities are rejected.
+func floatField(r *http.Request, name string, def float64) (float64, error) {
+	v := strings.TrimSpace(r.FormValue(name))
+	if v == "" {
+		return def, nil
+	}
+	f, err := strconv.ParseFloat(v, 64)
+	if err != nil || math.IsNaN(f) || math.IsInf(f, 0) {
+		return 0, badRequest("%s must be a number", name)
+	}
+	return f, nil
 }
 
 func maskField(r *http.Request, name string, w, h int) (*image.Gray, error) {

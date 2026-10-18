@@ -62,6 +62,27 @@
       <button type="button" class="chip" data-preset="percent:75:100">75% wide</button>
     </div>
 
+    <div class="sub-head">
+      <h2 class="panel-title" id="carving-title">Carving</h2>
+      <button type="button" class="link" id="carving-reset" aria-label="Reset carving settings to defaults">Reset</button>
+    </div>
+    <div class="row-field">
+      <label for="opt-blur">Blur radius</label>
+      <div class="range-wrap">
+        <input type="range" id="opt-blur" min="0" max="7" step="1" value="2" aria-describedby="blur-hint">
+        <output for="opt-blur" id="blur-out">2</output>
+      </div>
+      <p class="hint tight" id="blur-hint">Higher ignores fine texture and follows big shapes.</p>
+    </div>
+    <div class="row-field">
+      <label for="opt-sobel">Edge threshold (Sobel)</label>
+      <div class="range-wrap">
+        <input type="range" id="opt-sobel" min="0" max="64" step="1" value="0" aria-describedby="sobel-hint">
+        <output for="opt-sobel" id="sobel-out">0</output>
+      </div>
+      <p class="hint tight" id="sobel-hint">Higher treats faint edges as flat, so seams pass through them.</p>
+    </div>
+
     <h2 class="panel-title sub">Output</h2>
     <label class="check">
       <input type="checkbox" id="opt-faces" checked>
@@ -90,6 +111,29 @@
     </div>
   </aside>
 
+  <div class="main-col">
+  <!-- Before/after preview -->
+  <section class="preview" id="preview" aria-labelledby="preview-title" hidden>
+    <div class="preview-head">
+      <div class="preview-titles">
+        <h2 id="preview-title" class="panel-title">Before and after</h2>
+        <p class="preview-sub" id="preview-sub"></p>
+      </div>
+      <div class="preview-tools" id="preview-tools">
+        <div class="seg" role="radiogroup" aria-label="Comparison view" data-cmp-mode>
+          <button type="button" role="radio" aria-checked="true" data-view="slider">Slider</button>
+          <button type="button" role="radio" aria-checked="false" data-view="side">Side by side</button>
+        </div>
+        <button type="button" class="btn small ghost" id="btn-fullscreen">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+          Fullscreen
+        </button>
+      </div>
+    </div>
+    <div class="preview-viewer" id="preview-viewer"></div>
+    <p class="preview-empty" id="preview-empty">Resize an image to compare before and after.</p>
+  </section>
+
   <!-- Batch -->
   <section class="batch" aria-labelledby="batch-title">
     <div class="batch-head">
@@ -107,6 +151,7 @@
 
     <ul class="list" id="list" aria-label="Images to resize"></ul>
   </section>
+  </div>
 </main>
 
 <template id="row-tpl">
@@ -124,6 +169,7 @@
       <div class="bar" hidden><span></span></div>
     </div>
     <div class="row-actions">
+      <button type="button" class="btn small ghost cmp" aria-pressed="false" hidden>Compare</button>
       <button type="button" class="btn small ghost areas">Mark areas</button>
       <a class="btn small dl" hidden>Download</a>
       <button type="button" class="icon-btn remove" aria-label="Remove">
@@ -142,17 +188,15 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
     </button>
   </div>
-  <div class="compare-body" id="compare-body">
-    <div class="stage" id="stage">
-      <img id="cmp-before" alt="Original">
-      <div class="after-clip" id="after-clip"><img id="cmp-after" alt="Resized"></div>
-      <div class="divider" id="divider" aria-hidden="true"><span></span></div>
-      <span class="corner left">Resized</span>
-      <span class="corner right">Original</span>
-    </div>
-    <input type="range" id="cmp-range" min="0" max="100" value="50" aria-label="Compare position: left shows resized, right shows original">
+  <div class="compare-body">
+    <div class="preview-viewer centered" id="compare-viewer"></div>
   </div>
   <div class="dlg-foot">
+    <div class="seg" role="radiogroup" aria-label="Comparison view" data-cmp-mode>
+      <button type="button" role="radio" aria-checked="true" data-view="slider">Slider</button>
+      <button type="button" role="radio" aria-checked="false" data-view="side">Side by side</button>
+    </div>
+    <span class="spacer"></span>
     <a class="btn primary" id="cmp-dl">Download</a>
   </div>
 </dialog>

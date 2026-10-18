@@ -24,16 +24,28 @@
     w: $('#in-w'), h: $('#in-h'), pw: $('#in-pw'), ph: $('#in-ph'),
     faces: $('#opt-faces'), format: $('#opt-format'),
     quality: $('#opt-quality'), qualityOut: $('#quality-out'), qualityField: $('#quality-field'),
+    blur: $('#opt-blur'), blurOut: $('#blur-out'), sobel: $('#opt-sobel'), sobelOut: $('#sobel-out'),
+    carvingReset: $('#carving-reset'),
     run: $('#btn-run'), zip: $('#btn-zip'), clear: $('#btn-clear'),
     drop: $('#drop'), fileInput: $('#file-input'), list: $('#list'), summary: $('#summary'),
     tpl: $('#row-tpl'), toast: $('#toast'),
   };
 
-  const settings = { mode: 'exact', w: 1920, h: 1080, pw: 75, ph: 100, faces: true, format: 'same', quality: 92 };
+  // Carving defaults match fastcarve.DefaultBlurRadius / DefaultSobelThreshold.
+  const DEFAULT_BLUR = 2;
+  const DEFAULT_SOBEL = 0;
+  const clampInt = (v, lo, hi, def) => (Number.isFinite(Number(v)) ? Math.min(hi, Math.max(lo, Math.round(Number(v)))) : def);
+
+  const settings = {
+    mode: 'exact', w: 1920, h: 1080, pw: 75, ph: 100, faces: true, format: 'same', quality: 92,
+    blur: DEFAULT_BLUR, sobel: DEFAULT_SOBEL,
+  };
   try {
     const saved = JSON.parse(localStorage.getItem('caire-resize-settings') || 'null');
     if (saved && typeof saved === 'object') Object.assign(settings, saved);
   } catch (_) { /* storage unavailable */ }
+  settings.blur = clampInt(settings.blur, 0, 7, DEFAULT_BLUR);
+  settings.sobel = clampInt(settings.sobel, 0, 64, DEFAULT_SOBEL);
 
   function saveSettings() {
     try { localStorage.setItem('caire-resize-settings', JSON.stringify(settings)); } catch (_) { /* ignore */ }
@@ -48,6 +60,9 @@
     ui.format.value = settings.format;
     ui.quality.value = settings.quality;
     ui.qualityOut.textContent = settings.quality;
+    ui.blur.value = settings.blur;
+    ui.sobel.value = settings.sobel;
+    updateCarvingState();
     setMode(settings.mode, false);
     updateQualityState();
     markPreset();
@@ -87,6 +102,9 @@
     settings.format = ui.format.value;
     settings.quality = Number(ui.quality.value);
     ui.qualityOut.textContent = settings.quality;
+    settings.blur = clampInt(ui.blur.value, 0, 7, DEFAULT_BLUR);
+    settings.sobel = clampInt(ui.sobel.value, 0, 64, DEFAULT_SOBEL);
+    updateCarvingState();
     validateInputs();
     updateQualityState();
     markPreset();
@@ -106,6 +124,12 @@
     const off = settings.format === 'png';
     ui.qualityField.classList.toggle('disabled', off);
     ui.quality.disabled = off;
+  }
+
+  function updateCarvingState() {
+    ui.blurOut.textContent = settings.blur;
+    ui.sobelOut.textContent = settings.sobel;
+    ui.carvingReset.disabled = settings.blur === DEFAULT_BLUR && settings.sobel === DEFAULT_SOBEL;
   }
 
   function markPreset() {
@@ -133,7 +157,13 @@
       onSettingsInput();
     });
   });
-  for (const el of [ui.w, ui.h, ui.pw, ui.ph, ui.quality]) el.addEventListener('input', onSettingsInput);
+  for (const el of [ui.w, ui.h, ui.pw, ui.ph, ui.quality, ui.blur, ui.sobel]) el.addEventListener('input', onSettingsInput);
+  ui.carvingReset.addEventListener('click', () => {
+    ui.blur.value = DEFAULT_BLUR;
+    ui.sobel.value = DEFAULT_SOBEL;
+    onSettingsInput();
+    ui.blur.focus();
+  });
   for (const el of [ui.faces, ui.format]) el.addEventListener('change', onSettingsInput);
   for (const b of $$('[data-preset]')) {
     b.addEventListener('click', () => {
@@ -149,6 +179,8 @@
   let items = [];
   let nextId = 1;
   let running = false;
+  /** Finished item shown in the before/after preview. */
+  let selected = null;
 
   function targetFor(it) {
     const s = settings;
@@ -171,7 +203,7 @@
   }
 
   function jobKey(it, t) {
-    return [t.w, t.h, settings.faces, settings.format, settings.format === 'png' ? 0 : settings.quality, it.maskVersion].join('|');
+    return [t.w, t.h, settings.faces, settings.format, settings.format === 'png' ? 0 : settings.quality, settings.blur, settings.sobel, it.maskVersion].join('|');
   }
 
   function fmtSize(w, h) { return `${w} × ${h}`; }
@@ -229,7 +261,13 @@
     img.src = it.url;
     $('.name', li).textContent = it.name;
     $('.name', li).title = it.name;
-    $('.thumb', li).addEventListener('click', () => { if (it.result) openCompare(it); });
+    $('.thumb', li).addEventListener('click', () => selectItem(it, false));
+    $('.cmp', li).addEventListener('click', () => selectItem(it, true));
+    $('.cmp', li).setAttribute('aria-label', `Compare ${it.name} before and after`);
+    li.addEventListener('click', (e) => {
+      if (e.target.closest('button, a, input')) return;
+      selectItem(it, false);
+    });
     $('.areas', li).addEventListener('click', () => openMasker(it));
     $('.remove', li).addEventListener('click', () => removeItem(it));
     $('.remove', li).setAttribute('aria-label', `Remove ${it.name}`);
@@ -250,7 +288,7 @@
       arrow.hidden = false;
     } else { tgt.textContent = ''; arrow.hidden = true; }
 
-    const stale = it.result && t && !t.error && jobKey(it, t) !== it.resultKey;
+    const stale = isStale(it, t);
     let status = '', cls = '';
     switch (it.status) {
       case 'loading': status = 'Reading…'; break;
@@ -265,7 +303,8 @@
         break;
       case 'error': cls = 'error'; status = it.error; break;
     }
-    li.className = 'item' + (cls ? ' ' + cls : '');
+    const sel = selected === it && !!it.result;
+    li.className = 'item' + (cls ? ' ' + cls : '') + (it.result ? ' has-result' : '') + (sel ? ' selected' : '');
     $('.status', li).textContent = status;
 
     const tags = $('.tags', li);
@@ -288,10 +327,20 @@
       dl.download = it.result.filename;
       dl.setAttribute('aria-label', `Download ${it.result.filename}`);
     }
+    const cmpBtn = $('.cmp', li);
+    cmpBtn.hidden = !it.result;
+    cmpBtn.setAttribute('aria-pressed', String(sel));
     const thumb = $('.thumb', li);
     thumb.disabled = !it.result;
-    thumb.setAttribute('aria-label', it.result ? `Compare ${it.name} before and after` : it.name);
+    thumb.tabIndex = -1; // the Compare button is the keyboard route
+    thumb.setAttribute('aria-label', it.result ? `Show ${it.name} in the before and after preview` : it.name);
     $('.areas', li).disabled = !it.w || it.fatal || it.status === 'working' || it.status === 'queued';
+  }
+
+  function isStale(it, t) {
+    if (!it.result || !it.w) return false;
+    if (t === undefined) t = targetFor(it);
+    return !!(t && !t.error && jobKey(it, t) !== it.resultKey);
   }
 
   function needsWork(it) {
@@ -315,6 +364,7 @@
     ui.zip.disabled = done === 0;
     ui.zip.textContent = done > 1 ? `Download all (${done}, .zip)` : 'Download all (.zip)';
     ui.summary.textContent = n === 0 ? '' : `${n} image${n > 1 ? 's' : ''}${done ? `, ${done} resized` : ''}`;
+    renderPreview();
   }
 
   function removeItem(it) {
@@ -323,6 +373,10 @@
     if (it.result) URL.revokeObjectURL(it.result.url);
     it.el.remove();
     items = items.filter((x) => x !== it);
+    if (selected === it) {
+      selected = items.find((x) => x.result) || null;
+      if (selected) refreshRow(selected);
+    }
     refreshChrome();
   }
 
@@ -363,6 +417,8 @@
     fd.append('faces', settings.faces ? '1' : '0');
     fd.append('format', settings.format);
     fd.append('quality', String(settings.quality));
+    fd.append('blur', String(settings.blur));
+    fd.append('sobel', String(settings.sobel));
     if (it.masks.protect) fd.append('protect', it.masks.protect, 'protect.png');
     if (it.masks.remove) fd.append('remove', it.masks.remove, 'remove.png');
     it.ctrl = new AbortController();
@@ -382,6 +438,7 @@
       it.result = { blob, url: URL.createObjectURL(blob), w, h, ms, filename };
       it.resultKey = key;
       it.status = 'done';
+      if (!selected || !items.includes(selected) || !selected.result) selected = it;
     } catch (err) {
       if (err && err.name === 'AbortError') return;
       it.status = 'error';
@@ -545,72 +602,235 @@
     });
   }
 
-  // ---------- Compare ----------
-  const cmp = {
-    dlg: $('#compare'), title: $('#compare-title'), sub: $('#compare-sub'), body: $('#compare-body'),
-    stage: $('#stage'), before: $('#cmp-before'), after: $('#cmp-after'), clip: $('#after-clip'),
-    divider: $('#divider'), range: $('#cmp-range'), dl: $('#cmp-dl'), item: null,
+  // ---------- Compare (inline preview + fullscreen dialog share one viewer) ----------
+  const VIEW_KEY = 'caire-resize-view';
+  let cmpMode = 'slider';
+  try { if (localStorage.getItem(VIEW_KEY) === 'side') cmpMode = 'side'; } catch (_) { /* storage unavailable */ }
+
+  const VIEWER_HTML = `
+    <div class="cmpv-slider">
+      <div class="stage">
+        <img class="cmpv-before" alt="" draggable="false">
+        <div class="after-clip"><img class="cmpv-after" alt="" draggable="false"></div>
+        <div class="divider" role="slider" tabindex="0" aria-label="Before and after divider"
+             aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"><span></span></div>
+        <span class="corner left">Before</span>
+        <span class="corner right">After</span>
+      </div>
+    </div>
+    <div class="cmpv-side">
+      <figure><div class="frame"><img class="cmpv-before" alt=""></div><figcaption><b>Before</b> <span></span></figcaption></figure>
+      <figure><div class="frame"><img class="cmpv-after" alt=""></div><figcaption><b>After</b> <span></span></figcaption></figure>
+    </div>`;
+
+  function createViewer(host, maxH) {
+    host.innerHTML = VIEWER_HTML;
+    const [fB, fA] = $$('.cmpv-side figure', host);
+    const v = {
+      host, maxH, item: null, p: 50,
+      sliderBox: $('.cmpv-slider', host), sideBox: $('.cmpv-side', host),
+      stage: $('.stage', host), before: $('.stage .cmpv-before', host), after: $('.stage .cmpv-after', host),
+      clip: $('.after-clip', host), handle: $('.divider', host),
+      sB: $('img', fB), sA: $('img', fA), frB: $('.frame', fB), frA: $('.frame', fA),
+      capB: $('figcaption span', fB), capA: $('figcaption span', fA),
+    };
+
+    v.stage.addEventListener('pointerdown', (e) => {
+      if (e.button > 0) return;
+      e.preventDefault();
+      v.stage.setPointerCapture(e.pointerId);
+      const move = (ev) => {
+        const rect = v.stage.getBoundingClientRect();
+        if (rect.width) viewerSplit(v, ((ev.clientX - rect.left) / rect.width) * 100);
+      };
+      move(e);
+      const up = () => {
+        v.stage.removeEventListener('pointermove', move);
+        v.stage.removeEventListener('pointerup', up);
+        v.stage.removeEventListener('pointercancel', up);
+      };
+      v.stage.addEventListener('pointermove', move);
+      v.stage.addEventListener('pointerup', up);
+      v.stage.addEventListener('pointercancel', up);
+    });
+
+    v.handle.addEventListener('keydown', (e) => {
+      const step = e.shiftKey ? 10 : 2;
+      let p = v.p;
+      switch (e.key) {
+        case 'ArrowLeft': case 'ArrowDown': p -= step; break;
+        case 'ArrowRight': case 'ArrowUp': p += step; break;
+        case 'PageDown': p -= 10; break;
+        case 'PageUp': p += 10; break;
+        case 'Home': p = 0; break;
+        case 'End': p = 100; break;
+        default: return;
+      }
+      e.preventDefault();
+      viewerSplit(v, p);
+    });
+    return v;
+  }
+
+  function setSrc(img, url) { if (img.getAttribute('src') !== url) img.src = url; }
+
+  function viewerShow(v, it) {
+    v.item = it;
+    const r = it.result;
+    for (const img of [v.before, v.sB]) { setSrc(img, it.url); img.alt = `Original ${it.name}`; }
+    for (const img of [v.after, v.sA]) { setSrc(img, r.url); img.alt = `Resized ${it.name}`; }
+    v.capB.textContent = fmtSize(it.w, it.h);
+    v.capA.textContent = fmtSize(r.w, r.h);
+    viewerLayout(v);
+  }
+
+  function viewerClear(v) {
+    v.item = null;
+    // Drop references to the item's blob URLs so they can be freed once revoked.
+    for (const img of [v.before, v.after, v.sB, v.sA]) img.removeAttribute('src');
+  }
+
+  function viewerSplit(v, p) {
+    p = Math.max(0, Math.min(100, p));
+    v.p = p;
+    v.clip.style.clipPath = `inset(0 0 0 ${p}%)`;
+    v.handle.style.left = `${p}%`;
+    const n = Math.round(p);
+    v.handle.setAttribute('aria-valuenow', String(n));
+    v.handle.setAttribute('aria-valuetext', `${n}% before, ${100 - n}% after`);
+  }
+
+  // Both images are drawn at the same height and aligned left; where the
+  // After image is narrower the checkerboard shows through.
+  function viewerLayout(v) {
+    const it = v.item;
+    v.sliderBox.hidden = cmpMode !== 'slider';
+    v.sideBox.hidden = cmpMode !== 'side';
+    if (!it || !it.result) return;
+    const availW = v.host.clientWidth;
+    if (!availW) return; // not displayed
+    const r = it.result;
+    const aB = it.w / it.h, aA = r.w / r.h;
+    const availH = v.maxH();
+    const cap = Math.max(it.h, r.h) * 2;
+    const size = (el, w, h) => { el.style.width = `${Math.floor(w)}px`; el.style.height = `${Math.floor(h)}px`; };
+    if (cmpMode === 'slider') {
+      const H = Math.max(1, Math.min(availH, availW / Math.max(aB, aA), cap));
+      size(v.stage, Math.max(aB, aA) * H, H);
+      size(v.before, aB * H, H);
+      size(v.after, aA * H, H);
+      viewerSplit(v, v.p);
+    } else {
+      const gap = 12, capH = 28;
+      const rowH = Math.min(availH - capH, (availW - gap) / (aB + aA), cap);
+      const colH = Math.min((availH * 1.5 - gap) / 2 - capH, availW / Math.max(aB, aA), cap);
+      const stacked = colH > rowH * 1.25;
+      const H = Math.max(1, stacked ? colH : rowH);
+      v.sideBox.classList.toggle('stacked', stacked);
+      for (const [fr, img, a] of [[v.frB, v.sB, aB], [v.frA, v.sA, aA]]) { size(fr, a * H, H); size(img, a * H, H); }
+    }
+  }
+
+  // Inline panel
+  const pv = {
+    box: $('#preview'), sub: $('#preview-sub'), empty: $('#preview-empty'),
+    host: $('#preview-viewer'), tools: $('#preview-tools'), full: $('#btn-fullscreen'),
   };
+  const panelViewer = createViewer(pv.host, () => Math.max(220, Math.min(560, window.innerHeight * 0.6)));
+
+  function selectItem(it, reveal) {
+    if (!it.result) return;
+    const prev = selected;
+    selected = it;
+    if (prev && prev !== it && items.includes(prev)) refreshRow(prev);
+    refreshRow(it);
+    renderPreview();
+    if (reveal) {
+      const rect = pv.box.getBoundingClientRect();
+      if (rect.top < 0 || rect.top > window.innerHeight - 120) {
+        const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        pv.box.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
+      }
+    }
+  }
+
+  function renderPreview() {
+    if (selected && (!items.includes(selected) || !selected.result)) selected = null;
+    pv.box.hidden = items.length === 0;
+    const it = selected;
+    pv.empty.hidden = !!it;
+    pv.host.hidden = !it;
+    pv.tools.hidden = !it;
+    if (!it) {
+      if (panelViewer.item) viewerClear(panelViewer);
+      pv.sub.textContent = '';
+      pv.sub.removeAttribute('title');
+      return;
+    }
+    const r = it.result;
+    pv.sub.textContent = `${it.name}: ${fmtSize(it.w, it.h)} to ${fmtSize(r.w, r.h)}`
+      + (isStale(it) ? '. Made with earlier settings.' : '');
+    pv.sub.title = it.name;
+    viewerShow(panelViewer, it);
+  }
+
+  // Fullscreen dialog
+  const cmp = {
+    dlg: $('#compare'), title: $('#compare-title'), sub: $('#compare-sub'), dl: $('#cmp-dl'),
+  };
+  const dlgViewer = createViewer($('#compare-viewer'), () => Math.max(160, window.innerHeight - 250));
 
   function openCompare(it) {
-    cmp.item = it;
+    if (!it || !it.result) return;
     cmp.title.textContent = it.name;
     cmp.sub.textContent = `Original ${fmtSize(it.w, it.h)}, resized ${fmtSize(it.result.w, it.result.h)} in ${fmtTime(it.result.ms)}`;
-    cmp.before.src = it.url;
-    cmp.after.src = it.result.url;
     cmp.dl.href = it.result.url;
     cmp.dl.download = it.result.filename;
-    cmp.range.value = 50;
+    dlgViewer.p = panelViewer.p;
     cmp.dlg.showModal();
-    layoutCompare();
-    setSplit(50);
+    viewerShow(dlgViewer, it);
   }
-
-  function layoutCompare() {
-    const it = cmp.item;
-    if (!it || !cmp.dlg.open) return;
-    const r = it.result;
-    const maxW = Math.max(it.w, r.w), maxH = Math.max(it.h, r.h);
-    const availW = cmp.body.clientWidth - 32;
-    const availH = Math.max(160, window.innerHeight - 260);
-    const s = Math.min(availW / maxW, availH / maxH, 2);
-    const place = (img, w, h) => {
-      img.style.width = `${w * s}px`;
-      img.style.height = `${h * s}px`;
-      img.style.left = `${(maxW - w) * s / 2}px`;
-      img.style.top = `${(maxH - h) * s / 2}px`;
-    };
-    cmp.stage.style.width = `${maxW * s}px`;
-    cmp.stage.style.height = `${maxH * s}px`;
-    place(cmp.before, it.w, it.h);
-    place(cmp.after, r.w, r.h);
-  }
-
-  function setSplit(p) {
-    p = Math.max(0, Math.min(100, p));
-    cmp.clip.style.clipPath = `inset(0 ${100 - p}% 0 0)`;
-    cmp.divider.style.left = `${p}%`;
-    cmp.range.value = String(Math.round(p));
-  }
-
-  cmp.range.addEventListener('input', () => setSplit(Number(cmp.range.value)));
-  cmp.stage.addEventListener('pointerdown', (e) => {
-    cmp.stage.setPointerCapture(e.pointerId);
-    const move = (ev) => {
-      const rect = cmp.stage.getBoundingClientRect();
-      setSplit(((ev.clientX - rect.left) / rect.width) * 100);
-    };
-    move(e);
-    const up = () => {
-      cmp.stage.removeEventListener('pointermove', move);
-      cmp.stage.removeEventListener('pointerup', up);
-      cmp.stage.removeEventListener('pointercancel', up);
-    };
-    cmp.stage.addEventListener('pointermove', move);
-    cmp.stage.addEventListener('pointerup', up);
-    cmp.stage.addEventListener('pointercancel', up);
+  cmp.dlg.addEventListener('close', () => {
+    viewerSplit(panelViewer, dlgViewer.p);
+    viewerClear(dlgViewer);
+    cmp.dl.removeAttribute('href');
   });
-  window.addEventListener('resize', () => { layoutCompare(); layoutMasker(); });
+  pv.full.addEventListener('click', () => openCompare(selected));
+
+  // View mode toggles (one in the panel, one in the dialog)
+  const modeGroups = $$('[data-cmp-mode]').map((g) => $$('[data-view]', g));
+  function setCmpMode(mode, focusGroup) {
+    cmpMode = mode === 'side' ? 'side' : 'slider';
+    try { localStorage.setItem(VIEW_KEY, cmpMode); } catch (_) { /* ignore */ }
+    for (const btns of modeGroups) {
+      for (const b of btns) {
+        const on = b.dataset.view === cmpMode;
+        b.setAttribute('aria-checked', String(on));
+        b.tabIndex = on ? 0 : -1;
+        if (on && btns === focusGroup) b.focus();
+      }
+    }
+    viewerLayout(panelViewer);
+    if (cmp.dlg.open) viewerLayout(dlgViewer);
+  }
+  for (const btns of modeGroups) {
+    btns.forEach((b, i) => {
+      b.addEventListener('click', () => setCmpMode(b.dataset.view));
+      b.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        e.preventDefault();
+        const j = (i + (e.key === 'ArrowRight' ? 1 : btns.length - 1)) % btns.length;
+        setCmpMode(btns[j].dataset.view, btns);
+      });
+    });
+  }
+  setCmpMode(cmpMode);
+
+  window.addEventListener('resize', () => {
+    viewerLayout(panelViewer);
+    if (cmp.dlg.open) viewerLayout(dlgViewer);
+    layoutMasker();
+  });
 
   // ---------- Mask editor ----------
   const mk = {

@@ -6,12 +6,27 @@ import (
 	"sync"
 )
 
-// blurRadius is the radius of the box blur applied to the grayscale image
-// before the Sobel operator. The window is (2*blurRadius+1)^2 pixels.
-const blurRadius = 2
+// maxBlurRadius is the largest supported box blur radius. The box sum of a
+// (2*7+1)^2 window of 8-bit gray values is at most 225*255 = 57375, which fits uint16.
+const maxBlurRadius = 7
 
-// energyNorm turns a Sobel response computed on box sums back into gray units.
-const energyNorm = 1.0 / float32((2*blurRadius+1)*(2*blurRadius+1))
+// energyParams selects how the energy map is computed.
+type energyParams struct {
+	radius int     // box blur radius applied to gray before Sobel (0..maxBlurRadius; 0 = no blur)
+	thresh float32 // Sobel magnitudes (gray units) <= thresh become 0 before the bias is added
+}
+
+// defaultParams is the tuned behaviour (DefaultBlurRadius, DefaultSobelThreshold).
+var defaultParams = energyParams{radius: DefaultBlurRadius, thresh: DefaultSobelThreshold}
+
+// clamped returns p with the radius forced into [0, maxBlurRadius] and a non-negative threshold.
+func (p energyParams) clamped() energyParams {
+	p.radius = clampi(p.radius, 0, maxBlurRadius)
+	if !(p.thresh > 0) { // also maps NaN to 0
+		p.thresh = 0
+	}
+	return p
+}
 
 // parallelMinPixels is the image size from which seam removal is split across goroutines.
 const parallelMinPixels = 1 << 17
@@ -25,6 +40,10 @@ const parallelMinPixels = 1 << 17
 // The result is bit-for-bit what a full recomputation would produce.
 type carver struct {
 	w, h, stride int
+
+	r      int     // box blur radius (0..maxBlurRadius)
+	norm   float32 // 1/(2r+1)^2: turns a Sobel response on box sums back into gray units
+	thresh float32 // Sobel threshold in gray units
 
 	pix    []uint32  // packed NRGBA (R | G<<8 | B<<16 | A<<24); nil when only seam positions are needed
 	gray   []uint8   // luminance
@@ -50,10 +69,13 @@ type carver struct {
 
 // newCarver builds a carver for a w*h image. pix and bias are not modified; bias may be nil.
 // If keepPix is false the pixel colours are only used to derive the gray image.
-func newCarver(w, h int, pix []uint32, bias []float32, keepPix, trackOrig bool) *carver {
+func newCarver(w, h int, pix []uint32, bias []float32, keepPix, trackOrig bool, ep energyParams) *carver {
 	n := w * h
+	ep = ep.clamped()
+	d := 2*ep.radius + 1
 	c := &carver{
 		w: w, h: h, stride: w,
+		r: ep.radius, norm: 1 / float32(d*d), thresh: ep.thresh,
 		gray:   make([]uint8, n),
 		blur:   make([]uint16, n),
 		energy: make([]float32, n),
@@ -128,14 +150,20 @@ func clampi(v, lo, hi int) int {
 
 // fullBlur computes the clamped-edge box sum of the whole gray image (separable).
 func (c *carver) fullBlur() {
-	w, h, s := c.w, c.h, c.stride
+	w, h, s, r := c.w, c.h, c.stride, c.r
+	if r == 0 {
+		for i, g := range c.gray[:w*h] {
+			c.blur[i] = uint16(g)
+		}
+		return
+	}
 	tmp := make([]uint16, w*h)
 	for y := 0; y < h; y++ {
 		g := c.gray[y*s : y*s+w]
 		t := tmp[y*s : y*s+w]
 		for x := 0; x < w; x++ {
 			var sum uint16
-			for d := -blurRadius; d <= blurRadius; d++ {
+			for d := -r; d <= r; d++ {
 				sum += uint16(g[clampi(x+d, 0, w-1)])
 			}
 			t[x] = sum
@@ -144,7 +172,7 @@ func (c *carver) fullBlur() {
 	for y := 0; y < h; y++ {
 		b := c.blur[y*s : y*s+w]
 		clear(b)
-		for d := -blurRadius; d <= blurRadius; d++ {
+		for d := -r; d <= r; d++ {
 			t := tmp[clampi(y+d, 0, h-1)*s:]
 			t = t[:w]
 			for x := range b {
@@ -156,17 +184,19 @@ func (c *carver) fullBlur() {
 
 // blurRange recomputes the box sum for row y, columns [x0, x1].
 func (c *carver) blurRange(y, x0, x1 int) {
-	w, h, s := c.w, c.h, c.stride
-	var rows [2*blurRadius + 1][]uint8
-	for d := -blurRadius; d <= blurRadius; d++ {
+	w, h, s, r := c.w, c.h, c.stride, c.r
+	var rowBuf [2*maxBlurRadius + 1][]uint8
+	rows := rowBuf[:2*r+1]
+	for d := -r; d <= r; d++ {
 		yy := clampi(y+d, 0, h-1)
-		rows[d+blurRadius] = c.gray[yy*s : yy*s+w]
+		rows[d+r] = c.gray[yy*s : yy*s+w]
 	}
 	out := c.blur[y*s : y*s+w]
 	// Vertical sums of the columns the windows touch, then a sliding horizontal sum.
+	// removeSeam asks for at most 4r+1 columns, so 6r+1 <= 43 entries fit the stack buffer.
 	var buf [64]uint16
 	col := buf[:0]
-	for xx := x0 - blurRadius; xx <= x1+blurRadius; xx++ {
+	for xx := x0 - r; xx <= x1+r; xx++ {
 		cx := clampi(xx, 0, w-1)
 		var v uint16
 		for i := range rows {
@@ -175,20 +205,22 @@ func (c *carver) blurRange(y, x0, x1 int) {
 		col = append(col, v)
 	}
 	var sum uint16
-	for i := 0; i < 2*blurRadius; i++ {
+	for i := 0; i < 2*r; i++ {
 		sum += col[i]
 	}
 	for x := x0; x <= x1; x++ {
 		i := x - x0
-		sum += col[i+2*blurRadius]
+		sum += col[i+2*r]
 		out[x] = sum
 		sum -= col[i]
 	}
 }
 
 // energyRow recomputes the cost (Sobel magnitude + bias) for row y, columns [x0, x1].
+// Magnitudes (in gray units) at or below the threshold count as 0, like caire's SobelDetector.
 func (c *carver) energyRow(y, x0, x1 int) {
 	w, h, s := c.w, c.h, c.stride
+	norm, thresh := c.norm, c.thresh
 	ya, yb := clampi(y-1, 0, h-1), clampi(y+1, 0, h-1)
 	top := c.blur[ya*s : ya*s+w]
 	mid := c.blur[y*s : y*s+w]
@@ -208,7 +240,10 @@ func (c *carver) energyRow(y, x0, x1 int) {
 		}
 		gx := (int32(top[r]) + 2*int32(mid[r]) + int32(bot[r])) - (int32(top[l]) + 2*int32(mid[l]) + int32(bot[l]))
 		gy := (int32(bot[l]) + 2*int32(bot[x]) + int32(bot[r])) - (int32(top[l]) + 2*int32(top[x]) + int32(top[r]))
-		v := float32(math.Sqrt(float64(gx*gx+gy*gy))) * energyNorm
+		v := float32(math.Sqrt(float64(gx*gx+gy*gy))) * norm
+		if v <= thresh {
+			v = 0
+		}
 		if bias != nil {
 			v += bias[x]
 		}
@@ -373,16 +408,17 @@ func (c *carver) removeSeam() {
 
 	// The box sum at (y, x) depends on gray rows y-R..y+R; it changed only between
 	// the extreme seam columns of those rows, widened by the radius.
+	r := c.r
 	c.parallel(func(y0, y1 int) {
 		for y := y0; y < y1; y++ {
 			mn, mx := int32(math.MaxInt32), int32(-1)
-			for d := -blurRadius; d <= blurRadius; d++ {
+			for d := -r; d <= r; d++ {
 				v := c.seam[clampi(y+d, 0, h-1)]
 				mn = min(mn, v)
 				mx = max(mx, v)
 			}
-			x0 := clampi(int(mn)-blurRadius, 0, w-1)
-			x1 := clampi(int(mx)+blurRadius-1, x0, w-1)
+			x0 := clampi(int(mn)-r, 0, w-1)
+			x1 := clampi(int(mx)+r-1, x0, w-1)
 			c.lo[y], c.hi[y] = int32(x0), int32(x1)
 			c.blurRange(y, x0, x1)
 		}

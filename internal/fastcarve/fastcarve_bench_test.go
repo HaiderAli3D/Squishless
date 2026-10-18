@@ -48,7 +48,7 @@ func benchCaire(b *testing.B, img image.Image, newW, newH int) {
 
 // Noise image, 1000x650, shrink width by 350.
 func BenchmarkNoiseShrinkW_Fast(b *testing.B) {
-	benchFast(b, noiseImage(1000, 650, 42), Options{Width: 1000 - benchShrink})
+	benchFast(b, noiseImage(1000, 650, 42), Options{Width: 1000 - benchShrink, BlurRadius: DefaultBlurRadius})
 }
 
 func BenchmarkNoiseShrinkW_Caire(b *testing.B) {
@@ -58,12 +58,12 @@ func BenchmarkNoiseShrinkW_Caire(b *testing.B) {
 // Photo sample, 1000x650, shrink width by 350.
 func BenchmarkPortraitShrinkW_Fast(b *testing.B) {
 	img := loadSample(b)
-	benchFast(b, img, Options{Width: img.Bounds().Dx() - benchShrink})
+	benchFast(b, img, Options{Width: img.Bounds().Dx() - benchShrink, BlurRadius: DefaultBlurRadius})
 }
 
 func BenchmarkPortraitShrinkW_FastFaces(b *testing.B) {
 	img := loadSample(b)
-	benchFast(b, img, Options{Width: img.Bounds().Dx() - benchShrink, ProtectFaces: true})
+	benchFast(b, img, Options{Width: img.Bounds().Dx() - benchShrink, ProtectFaces: true, BlurRadius: DefaultBlurRadius})
 }
 
 func BenchmarkPortraitShrinkW_Caire(b *testing.B) {
@@ -73,13 +73,32 @@ func BenchmarkPortraitShrinkW_Caire(b *testing.B) {
 
 // Other shapes (fast engine only).
 func BenchmarkNoiseShrinkH_Fast(b *testing.B) {
-	benchFast(b, noiseImage(1000, 650, 42), Options{Height: 400})
+	benchFast(b, noiseImage(1000, 650, 42), Options{Height: 400, BlurRadius: DefaultBlurRadius})
 }
 
 func BenchmarkNoiseEnlargeW_Fast(b *testing.B) {
-	benchFast(b, noiseImage(1000, 650, 42), Options{Width: 1350})
+	benchFast(b, noiseImage(1000, 650, 42), Options{Width: 1350, BlurRadius: DefaultBlurRadius})
 }
 
 func BenchmarkNoiseShrinkBoth_Fast(b *testing.B) {
-	benchFast(b, noiseImage(1000, 650, 42), Options{Width: 700, Height: 500})
+	benchFast(b, noiseImage(1000, 650, 42), Options{Width: 700, Height: 500, BlurRadius: DefaultBlurRadius})
+}
+
+// Blur radius / Sobel threshold extremes (fast engine only).
+func BenchmarkNoiseShrinkW_FastBlur0(b *testing.B) {
+	benchFast(b, noiseImage(1000, 650, 42), Options{Width: 1000 - benchShrink})
+}
+
+func BenchmarkNoiseShrinkW_FastBlur7(b *testing.B) {
+	benchFast(b, noiseImage(1000, 650, 42), Options{Width: 1000 - benchShrink, BlurRadius: 7})
+}
+
+func BenchmarkPortraitShrinkW_FastBlur7(b *testing.B) {
+	img := loadSample(b)
+	benchFast(b, img, Options{Width: img.Bounds().Dx() - benchShrink, BlurRadius: 7})
+}
+
+func BenchmarkPortraitShrinkW_FastBlur7Sobel16(b *testing.B) {
+	img := loadSample(b)
+	benchFast(b, img, Options{Width: img.Bounds().Dx() - benchShrink, BlurRadius: 7, SobelThreshold: 16})
 }

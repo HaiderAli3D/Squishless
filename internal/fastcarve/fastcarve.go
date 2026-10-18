@@ -19,7 +19,21 @@ type Options struct {
 	ProtectFaces  bool        // detect faces (pigo) once on the source, protect those regions
 	Protect       *image.Gray // optional mask, same size as src, >127 = protect (may be nil)
 	Remove        *image.Gray // optional mask, same size as src, >127 = remove first (may be nil)
+
+	// BlurRadius is the box blur radius applied to the grayscale image before the Sobel
+	// operator (window (2r+1)^2). 0 = no blur; values outside 0..7 are clamped.
+	// Note the zero value means no blur: use DefaultBlurRadius for the tuned behaviour.
+	BlurRadius int
+	// SobelThreshold zeroes Sobel magnitudes (in gray units, 0..~1020) at or below it
+	// before protect/remove biases are added, like caire's SobelDetector. Negative = 0.
+	SobelThreshold float32
 }
+
+// Defaults that reproduce the tuned behaviour.
+const (
+	DefaultBlurRadius             = 2
+	DefaultSobelThreshold float32 = 0
+)
 
 const (
 	protectBias  = 1e6
@@ -115,12 +129,13 @@ func Resize(ctx context.Context, src image.Image, opt Options, progress func(fra
 		}
 	}
 
+	ep := energyParams{radius: opt.BlurRadius, thresh: opt.SobelThreshold}
 	rep := &reporter{fn: progress}
 	rep.total = absi(tw-w) + absi(th-h)
 
 	var err error
 	if tw < w {
-		pix, bias, err = shrink(ctx, rep, pix, bias, w, h, w-tw)
+		pix, bias, err = shrink(ctx, rep, ep, pix, bias, w, h, w-tw)
 		if err != nil {
 			return nil, err
 		}
@@ -128,7 +143,7 @@ func Resize(ctx context.Context, src image.Image, opt Options, progress func(fra
 	}
 	if th < h {
 		pt, bt := transpose32(pix, w, h), transposeF(bias, w, h)
-		pt, bt, err = shrink(ctx, rep, pt, bt, h, w, h-th)
+		pt, bt, err = shrink(ctx, rep, ep, pt, bt, h, w, h-th)
 		if err != nil {
 			return nil, err
 		}
@@ -136,7 +151,7 @@ func Resize(ctx context.Context, src image.Image, opt Options, progress func(fra
 		pix, bias = transpose32(pt, h, w), transposeF(bt, h, w)
 	}
 	if tw > w {
-		pix, bias, err = enlarge(ctx, rep, pix, bias, w, h, tw-w)
+		pix, bias, err = enlarge(ctx, rep, ep, pix, bias, w, h, tw-w)
 		if err != nil {
 			return nil, err
 		}
@@ -144,7 +159,7 @@ func Resize(ctx context.Context, src image.Image, opt Options, progress func(fra
 	}
 	if th > h {
 		pt, bt := transpose32(pix, w, h), transposeF(bias, w, h)
-		pt, _, err = enlarge(ctx, rep, pt, bt, h, w, th-h)
+		pt, _, err = enlarge(ctx, rep, ep, pt, bt, h, w, th-h)
 		if err != nil {
 			return nil, err
 		}
@@ -199,8 +214,8 @@ func cancelled(ctx context.Context) error {
 }
 
 // shrink removes n vertical seams from a w*h image.
-func shrink(ctx context.Context, rep *reporter, pix []uint32, bias []float32, w, h, n int) ([]uint32, []float32, error) {
-	c := newCarver(w, h, pix, bias, true, false)
+func shrink(ctx context.Context, rep *reporter, ep energyParams, pix []uint32, bias []float32, w, h, n int) ([]uint32, []float32, error) {
+	c := newCarver(w, h, pix, bias, true, false, ep)
 	for i := 0; i < n; i++ {
 		if err := cancelled(ctx); err != nil {
 			return nil, nil, err
@@ -219,7 +234,7 @@ func shrink(ctx context.Context, rep *reporter, pix []uint32, bias []float32, w,
 // enlarge inserts n vertical seams into a w*h image. The seams are found by removing
 // them from a working copy (tracking original columns), then duplicated in the
 // original, in rounds of at most half the current width.
-func enlarge(ctx context.Context, rep *reporter, pix []uint32, bias []float32, w, h, n int) ([]uint32, []float32, error) {
+func enlarge(ctx context.Context, rep *reporter, ep energyParams, pix []uint32, bias []float32, w, h, n int) ([]uint32, []float32, error) {
 	var mark []bool // pixels created (or duplicated) by previous rounds
 	for n > 0 {
 		k := min(n, max(1, w/2))
@@ -234,7 +249,7 @@ func enlarge(ctx context.Context, rep *reporter, pix []uint32, bias []float32, w
 			}
 			wb[i] = v
 		}
-		c := newCarver(w, h, pix, wb, false, true)
+		c := newCarver(w, h, pix, wb, false, true, ep)
 		cols := make([]int32, k*h)
 		for j := 0; j < k; j++ {
 			if err := cancelled(ctx); err != nil {

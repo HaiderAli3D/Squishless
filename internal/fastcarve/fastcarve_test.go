@@ -78,7 +78,7 @@ func TestErrors(t *testing.T) {
 func TestIncrementalEnergyExact(t *testing.T) {
 	src := noiseImage(90, 60, 3)
 	pix := toPacked(src)
-	c := newCarver(90, 60, pix, nil, true, false)
+	c := newCarver(90, 60, pix, nil, true, false, defaultParams)
 	for i := 0; i < 40; i++ {
 		c.findSeam()
 		c.removeSeam()
@@ -100,7 +100,7 @@ func TestIncrementalEnergyExact(t *testing.T) {
 		}
 	}
 	p, _ := c.extract()
-	ref := newCarver(c.w, c.h, p, nil, false, false)
+	ref := newCarver(c.w, c.h, p, nil, false, false, defaultParams)
 	for y := 0; y < c.h; y++ {
 		for x := 0; x < c.w; x++ {
 			a := c.energy[y*c.stride+x]

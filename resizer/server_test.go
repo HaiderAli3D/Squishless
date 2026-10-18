@@ -231,6 +231,69 @@ func TestMasksPassedThrough(t *testing.T) {
 	}
 }
 
+func TestBlurSobelDefaultsAndPassThrough(t *testing.T) {
+	var got resizeOptions
+	stubResize(t, simpleStub(&got))
+	img := encPNG(testImage(20, 20))
+	cases := []struct {
+		fields map[string]string
+		blur   int
+		sobel  float32
+	}{
+		{map[string]string{"width": "10"}, 2, 0},
+		{map[string]string{"width": "10", "blur": "", "sobel": " "}, 2, 0},
+		{map[string]string{"width": "10", "blur": "0", "sobel": "0"}, 0, 0},
+		{map[string]string{"width": "10", "blur": "7", "sobel": "64"}, 7, 64},
+		{map[string]string{"width": "10", "blur": " 4 ", "sobel": "12.5"}, 4, 12.5},
+	}
+	for _, c := range cases {
+		got = resizeOptions{BlurRadius: -1, SobelThreshold: -1}
+		rec := do(newServer(), multipartReq(t, c.fields, part{"image", "a.png", img}))
+		if rec.Code != 200 {
+			t.Fatalf("%v: status %d %s", c.fields, rec.Code, rec.Body)
+		}
+		if got.BlurRadius != c.blur || got.SobelThreshold != c.sobel {
+			t.Errorf("%v: got blur=%d sobel=%v, want %d %v", c.fields, got.BlurRadius, got.SobelThreshold, c.blur, c.sobel)
+		}
+	}
+}
+
+func TestBlurSobelValidation(t *testing.T) {
+	called := false
+	stubResize(t, func(ctx context.Context, src image.Image, o resizeOptions) (*image.NRGBA, error) {
+		called = true
+		return simpleStub(nil)(ctx, src, o)
+	})
+	img := encPNG(testImage(20, 20))
+	cases := []struct {
+		fields map[string]string
+		want   string
+	}{
+		{map[string]string{"blur": "-1"}, "blur must be between 0 and 7"},
+		{map[string]string{"blur": "8"}, "blur must be between 0 and 7"},
+		{map[string]string{"blur": "2.5"}, "blur must be a whole number"},
+		{map[string]string{"blur": "x"}, "blur must be a whole number"},
+		{map[string]string{"sobel": "-0.1"}, "sobel must be between 0 and 64"},
+		{map[string]string{"sobel": "64.01"}, "sobel must be between 0 and 64"},
+		{map[string]string{"sobel": "abc"}, "sobel must be a number"},
+		{map[string]string{"sobel": "NaN"}, "sobel must be a number"},
+		{map[string]string{"sobel": "Inf"}, "sobel must be a number"},
+	}
+	for _, c := range cases {
+		c.fields["width"] = "10"
+		rec := do(newServer(), multipartReq(t, c.fields, part{"image", "a.png", img}))
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("%v: status %d, want 400: %s", c.fields, rec.Code, rec.Body)
+		}
+		if msg := errMsg(t, rec); !strings.Contains(msg, c.want) {
+			t.Errorf("%v: error %q does not contain %q", c.fields, msg, c.want)
+		}
+	}
+	if called {
+		t.Error("engine called for an invalid request")
+	}
+}
+
 func TestEngineErrorIsJSON(t *testing.T) {
 	stubResize(t, func(context.Context, image.Image, resizeOptions) (*image.NRGBA, error) {
 		return nil, io.ErrUnexpectedEOF

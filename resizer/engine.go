@@ -17,6 +17,9 @@ func init() {
 			ProtectFaces: o.ProtectFaces,
 			Protect:      o.Protect,
 			Remove:       o.Remove,
+
+			BlurRadius:     o.BlurRadius,
+			SobelThreshold: o.SobelThreshold,
 		}, nil)
 	}
 }
