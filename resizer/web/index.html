@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Caire Resize</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='7' width='26' height='18' rx='3' fill='%23336b87'/%3E%3Cpath d='M13 7v18M19 7v18' stroke='%23fff' stroke-width='2' stroke-dasharray='3 2'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="7" width="26" height="18" rx="3"/><path d="M13 7v18M19 7v18"/></svg>
+    <div>
+      <h1>Caire Resize</h1>
+      <p class="tagline">Change an image's size or shape and keep what matters in it.</p>
+    </div>
+  </div>
+</header>
+
+<main class="layout">
+  <!-- Settings -->
+  <aside class="panel" aria-labelledby="settings-title">
+    <h2 id="settings-title" class="panel-title">Target size</h2>
+
+    <div class="tabs" role="tablist" aria-label="How to set the size">
+      <button role="tab" id="tab-exact" aria-controls="mode-fields" aria-selected="true" data-mode="exact">Exact</button>
+      <button role="tab" id="tab-percent" aria-controls="mode-fields" aria-selected="false" data-mode="percent" tabindex="-1">Percent</button>
+      <button role="tab" id="tab-width" aria-controls="mode-fields" aria-selected="false" data-mode="width" tabindex="-1">Fit width</button>
+      <button role="tab" id="tab-height" aria-controls="mode-fields" aria-selected="false" data-mode="height" tabindex="-1">Fit height</button>
+    </div>
+
+    <div id="mode-fields" role="tabpanel" aria-labelledby="tab-exact" class="fields">
+      <div class="dim" data-show="exact width">
+        <label for="in-w">Width</label>
+        <div class="unit-input"><input id="in-w" type="number" inputmode="numeric" min="1" step="1" value="1920"><span class="unit">px</span></div>
+      </div>
+      <span class="times" data-show="exact" aria-hidden="true">&times;</span>
+      <div class="dim" data-show="exact height">
+        <label for="in-h">Height</label>
+        <div class="unit-input"><input id="in-h" type="number" inputmode="numeric" min="1" step="1" value="1080"><span class="unit">px</span></div>
+      </div>
+      <div class="dim" data-show="percent">
+        <label for="in-pw">Width</label>
+        <div class="unit-input"><input id="in-pw" type="number" inputmode="numeric" min="10" max="400" step="1" value="75"><span class="unit">%</span></div>
+      </div>
+      <span class="times" data-show="percent" aria-hidden="true">&times;</span>
+      <div class="dim" data-show="percent">
+        <label for="in-ph">Height</label>
+        <div class="unit-input"><input id="in-ph" type="number" inputmode="numeric" min="10" max="400" step="1" value="100"><span class="unit">%</span></div>
+      </div>
+    </div>
+    <p class="hint" id="mode-hint">Each image is reshaped to exactly this size.</p>
+
+    <div class="presets" role="group" aria-label="Presets">
+      <button type="button" class="chip" data-preset="exact:1920:1080">1920 &times; 1080</button>
+      <button type="button" class="chip" data-preset="exact:1080:1080">1080 &times; 1080</button>
+      <button type="button" class="chip" data-preset="exact:1080:1350">1080 &times; 1350</button>
+      <button type="button" class="chip" data-preset="exact:1200:628">1200 &times; 628</button>
+      <button type="button" class="chip" data-preset="percent:50:50">50%</button>
+      <button type="button" class="chip" data-preset="percent:75:100">75% wide</button>
+    </div>
+
+    <h2 class="panel-title sub">Output</h2>
+    <label class="check">
+      <input type="checkbox" id="opt-faces" checked>
+      <span>Protect faces</span>
+    </label>
+    <div class="row-field">
+      <label for="opt-format">Format</label>
+      <select id="opt-format">
+        <option value="same">Same as input</option>
+        <option value="jpg">JPG</option>
+        <option value="png">PNG</option>
+      </select>
+    </div>
+    <div class="row-field" id="quality-field">
+      <label for="opt-quality">JPG quality</label>
+      <div class="range-wrap">
+        <input type="range" id="opt-quality" min="40" max="100" step="1" value="92">
+        <output for="opt-quality" id="quality-out">92</output>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn primary" id="btn-run" disabled>Resize all</button>
+      <button type="button" class="btn" id="btn-zip" disabled>Download all (.zip)</button>
+      <p class="shortcut"><kbd>Ctrl</kbd> + <kbd>Enter</kbd> resizes all</p>
+    </div>
+  </aside>
+
+  <!-- Batch -->
+  <section class="batch" aria-labelledby="batch-title">
+    <div class="batch-head">
+      <h2 id="batch-title" class="panel-title">Images</h2>
+      <p class="summary" id="summary" aria-live="polite"></p>
+      <button type="button" class="link" id="btn-clear" hidden>Clear list</button>
+    </div>
+
+    <label class="drop" id="drop">
+      <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,image/bmp,image/gif" multiple>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+      <span class="drop-main">Drop images here, <u>choose files</u>, or paste</span>
+      <span class="drop-sub">JPG, PNG, WebP, BMP or GIF &middot; up to 30 MB and 50 megapixels each</span>
+    </label>
+
+    <ul class="list" id="list" aria-label="Images to resize"></ul>
+  </section>
+</main>
+
+<template id="row-tpl">
+  <li class="item">
+    <button type="button" class="thumb" aria-label="Preview">
+      <img alt="">
+    </button>
+    <div class="meta">
+      <p class="name"></p>
+      <p class="dims"><span class="orig"></span><span class="arrow" aria-hidden="true"> to </span><span class="target"></span></p>
+      <div class="status-line">
+        <span class="status"></span>
+        <span class="tags"></span>
+      </div>
+      <div class="bar" hidden><span></span></div>
+    </div>
+    <div class="row-actions">
+      <button type="button" class="btn small ghost areas">Mark areas</button>
+      <a class="btn small dl" hidden>Download</a>
+      <button type="button" class="icon-btn remove" aria-label="Remove">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+  </li>
+</template>
+
+<!-- Compare dialog -->
+<dialog id="compare" aria-labelledby="compare-title">
+  <div class="dlg-head">
+    <h2 id="compare-title"></h2>
+    <p class="dlg-sub" id="compare-sub"></p>
+    <button type="button" class="icon-btn" data-close aria-label="Close">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div class="compare-body" id="compare-body">
+    <div class="stage" id="stage">
+      <img id="cmp-before" alt="Original">
+      <div class="after-clip" id="after-clip"><img id="cmp-after" alt="Resized"></div>
+      <div class="divider" id="divider" aria-hidden="true"><span></span></div>
+      <span class="corner left">Resized</span>
+      <span class="corner right">Original</span>
+    </div>
+    <input type="range" id="cmp-range" min="0" max="100" value="50" aria-label="Compare position: left shows resized, right shows original">
+  </div>
+  <div class="dlg-foot">
+    <a class="btn primary" id="cmp-dl">Download</a>
+  </div>
+</dialog>
+
+<!-- Mask dialog -->
+<dialog id="masker" class="wide" aria-labelledby="mask-title">
+  <div class="dlg-head">
+    <h2 id="mask-title">Mark areas</h2>
+    <p class="dlg-sub">Paint green over what must stay, red over what should go first.</p>
+    <button type="button" class="icon-btn" data-close aria-label="Close">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div class="mask-tools" role="toolbar" aria-label="Brush">
+    <div class="seg" role="radiogroup" aria-label="Brush type">
+      <button type="button" role="radio" aria-checked="true" data-tool="protect"><i class="sw protect"></i>Keep</button>
+      <button type="button" role="radio" aria-checked="false" data-tool="remove"><i class="sw remove"></i>Remove</button>
+      <button type="button" role="radio" aria-checked="false" data-tool="erase"><i class="sw erase"></i>Eraser</button>
+    </div>
+    <label class="brush">
+      <span>Brush</span>
+      <input type="range" id="brush-size" min="4" max="160" value="40">
+    </label>
+    <button type="button" class="btn small ghost" id="mask-clear">Clear</button>
+  </div>
+  <div class="mask-body" id="mask-body">
+    <div class="mask-stage" id="mask-stage">
+      <canvas id="mask-img"></canvas>
+      <canvas id="mask-paint"></canvas>
+      <div class="cursor" id="brush-cursor" hidden></div>
+    </div>
+  </div>
+  <div class="dlg-foot">
+    <button type="button" class="btn" data-close>Cancel</button>
+    <button type="button" class="btn primary" id="mask-save">Use these areas</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+caire-studio.exe
+*.exe
+.loki/
+.playwright-mcp/
+third_party/caire/gui_preview.gif

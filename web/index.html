@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Caire Studio</title>
+  <meta name="description" content="A local workbench for experimenting with Caire, content-aware image resizing by seam carving.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23142330'/%3E%3Cpath d='M15 3c-3 5 4 7 1 12s-4 8 0 14' fill='none' stroke='%23ffb24a' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    try { var t = JSON.parse(localStorage.getItem('caire.theme')); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#controls">Skip to settings</a>
+
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="1" y="1" width="30" height="30" rx="7" class="brand-mark-bg"/>
+        <path d="M15 4c-3 5 4 7 1 12s-4 7 0 12" class="brand-mark-seam"/>
+      </svg>
+      <div class="brand-text">
+        <span class="brand-name">Caire Studio</span>
+        <span class="brand-sub">Content-aware resizing, one seam at a time</span>
+      </div>
+    </div>
+
+    <div class="source-meta" id="sourceMeta" aria-live="polite">
+      <span class="source-meta-empty">No image loaded</span>
+    </div>
+
+    <div class="topbar-actions">
+      <label class="btn btn-quiet file-btn">
+        <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.bmp,.gif,image/jpeg,image/png,image/bmp,image/gif">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 13V3m0 0L6 7m4-4 4 4M3 13v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3"/></svg>
+        <span>Open image</span>
+      </label>
+      <button type="button" class="btn btn-icon" id="themeToggle" aria-label="Switch to light theme" title="Toggle theme">
+        <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-sun"><circle cx="10" cy="10" r="3.5"/><path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M4 16l1.4-1.4M14.6 5.4 16 4"/></svg>
+        <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-moon"><path d="M16.5 12.5A7 7 0 0 1 7.5 3.5a7 7 0 1 0 9 9Z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- ============ Settings panel ============ -->
+    <aside class="panel" aria-label="Settings">
+      <form id="controls" class="controls" novalidate autocomplete="off">
+
+        <section class="group" aria-labelledby="g-source">
+          <h2 class="group-title" id="g-source">Source</h2>
+          <p class="hint">Drop a photo anywhere, paste one with Ctrl+V, or start from a sample.</p>
+          <div class="samples" id="samples" role="list" aria-label="Sample images">
+            <span class="hint">Loading samples…</span>
+          </div>
+        </section>
+
+        <section class="group" aria-labelledby="g-size">
+          <h2 class="group-title" id="g-size">Target size</h2>
+
+          <div class="size-row">
+            <label class="field">
+              <span class="field-label">Width</span>
+              <span class="num-wrap">
+                <input type="number" id="w" inputmode="numeric" min="0" step="1" placeholder="same">
+                <span class="num-unit" data-unit-label>px</span>
+              </span>
+            </label>
+            <label class="field">
+              <span class="field-label">Height</span>
+              <span class="num-wrap">
+                <input type="number" id="h" inputmode="numeric" min="0" step="1" placeholder="same">
+                <span class="num-unit" data-unit-label>px</span>
+              </span>
+            </label>
+            <fieldset class="seg seg-unit" aria-label="Unit">
+              <legend class="sr-only">Unit</legend>
+              <label><input type="radio" name="unit" value="px" checked><span>px</span></label>
+              <label><input type="radio" name="unit" value="%" id="unitPct"><span>%</span></label>
+            </fieldset>
+          </div>
+
+          <p class="hint" id="unitHint">In % mode, the number is how much of the original to keep, so 70 means 70% of the width. Percent only shrinks.</p>
+
+          <div class="checks">
+            <label class="check"><input type="checkbox" id="keepAspect"><span>Keep aspect while typing</span></label>
+            <label class="check"><input type="checkbox" id="square"><span>Make square</span></label>
+          </div>
+          <p class="hint">Seam carving changes one dimension at a time. If you shrink both, Caire first scales the whole photo down to the right aspect, then carves the rest. Square crops to the shortest edge, so it needs both values.</p>
+
+          <div class="presets" role="group" aria-label="Quick presets">
+            <button type="button" class="chip" data-preset="w-25">Width −25%</button>
+            <button type="button" class="chip" data-preset="w-50">Width −50%</button>
+            <button type="button" class="chip" data-preset="h-30">Height −30%</button>
+            <button type="button" class="chip" data-preset="square">Square</button>
+            <button type="button" class="chip" data-preset="w+20">Width +20%</button>
+          </div>
+
+          <div class="plan" id="plan" aria-live="polite"></div>
+          <p class="field-error" id="sizeError" role="alert" hidden></p>
+        </section>
+
+        <section class="group" aria-labelledby="g-energy">
+          <h2 class="group-title" id="g-energy">Edge detection</h2>
+          <label class="slider">
+            <span class="slider-head"><span class="field-label">Blur radius</span><output id="blurOut" for="blur">4</output></span>
+            <input type="range" id="blur" min="0" max="20" step="1" value="4">
+          </label>
+          <p class="hint">Softens the photo before Caire looks for edges. Higher values smooth over fine texture like grass or noise, so seams pass through it more easily.</p>
+          <label class="slider">
+            <span class="slider-head"><span class="field-label">Sobel threshold</span><output id="sobelOut" for="sobel">2</output></span>
+            <input type="range" id="sobel" min="0" max="20" step="1" value="2">
+          </label>
+          <p class="hint">Edges weaker than this count as empty space. Raise it to let seams cut through faint detail.</p>
+        </section>
+
+        <section class="group" aria-labelledby="g-face">
+          <h2 class="group-title" id="g-face">Faces</h2>
+          <label class="switch"><input type="checkbox" id="face"><span class="switch-track" aria-hidden="true"></span><span>Detect and protect faces</span></label>
+          <label class="slider" id="faceAngleWrap">
+            <span class="slider-head"><span class="field-label">Detector angle</span><output id="faceAngleOut" for="faceAngle">0°</output></span>
+            <input type="range" id="faceAngle" min="-180" max="180" step="1" value="0">
+          </label>
+          <p class="hint">Finds faces and keeps seams away from them. Tilt the detector if faces in the photo are rotated.</p>
+        </section>
+
+        <section class="group" aria-labelledby="g-seams">
+          <h2 class="group-title" id="g-seams">Seam display</h2>
+          <label class="switch"><input type="checkbox" id="debug"><span class="switch-track" aria-hidden="true"></span><span>Show each seam as it is removed</span></label>
+          <div class="seam-style" id="seamStyle">
+            <fieldset class="seg" aria-label="Seam shape">
+              <legend class="sr-only">Seam shape</legend>
+              <label><input type="radio" name="shape" value="circle" checked><span>Dots</span></label>
+              <label><input type="radio" name="shape" value="line"><span>Line</span></label>
+            </fieldset>
+            <label class="color-field">
+              <input type="color" id="seamColor" value="#ff0000" aria-label="Seam color">
+              <span class="color-value" id="seamColorValue">#ff0000</span>
+            </label>
+          </div>
+          <p class="hint">Draws the path Caire takes through the photo on the live stage, so you can see what it decided was least important.</p>
+        </section>
+
+        <section class="group" aria-labelledby="g-output">
+          <h2 class="group-title" id="g-output">Download format</h2>
+          <fieldset class="seg" aria-label="Download format">
+            <legend class="sr-only">Download format</legend>
+            <label><input type="radio" name="format" value="png" checked><span>PNG</span></label>
+            <label><input type="radio" name="format" value="jpg"><span>JPEG</span></label>
+          </fieldset>
+          <p class="hint">PNG is lossless. JPEG is smaller, saved at quality 95.</p>
+        </section>
+      </form>
+
+      <div class="runbar">
+        <div class="run-error" id="runError" role="alert" hidden>
+          <strong id="runErrorTitle">Caire couldn't run with these settings</strong>
+          <span id="runErrorMsg"></span>
+        </div>
+        <div class="run-actions">
+          <button type="button" class="btn btn-primary" id="runBtn" disabled>
+            <span id="runLabel">Carve image</span>
+            <kbd>Ctrl ↵</kbd>
+          </button>
+          <button type="button" class="btn btn-quiet" id="cancelBtn" disabled>
+            Cancel <kbd>Esc</kbd>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============ Stage ============ -->
+    <section class="stage-col" aria-label="Stage">
+      <div class="stage-head">
+        <div class="tabs" role="tablist" aria-label="Stage view">
+          <button type="button" role="tab" class="tab" id="tab-source" data-view="source" aria-selected="true" aria-controls="stage">Source &amp; masks</button>
+          <button type="button" role="tab" class="tab" id="tab-live" data-view="live" aria-selected="false" aria-controls="stage" disabled>Live</button>
+          <button type="button" role="tab" class="tab" id="tab-result" data-view="result" aria-selected="false" aria-controls="stage" disabled>Result</button>
+        </div>
+
+        <div class="toolbar" id="maskTools" role="toolbar" aria-label="Mask painting">
+          <fieldset class="seg seg-brush" aria-label="Brush">
+            <legend class="sr-only">Brush</legend>
+            <label class="brush-protect"><input type="radio" name="brush" value="protect" checked><span><i class="dot" aria-hidden="true"></i>Protect</span></label>
+            <label class="brush-remove"><input type="radio" name="brush" value="remove"><span><i class="dot" aria-hidden="true"></i>Remove</span></label>
+            <label class="brush-erase"><input type="radio" name="brush" value="erase"><span>Eraser</span></label>
+          </fieldset>
+          <label class="brush-size">
+            <span class="sr-only">Brush size</span>
+            <input type="range" id="brushSize" min="4" max="160" step="2" value="32" aria-label="Brush size">
+            <output id="brushOut" for="brushSize">32</output>
+          </label>
+          <label class="check check-compact"><input type="checkbox" id="showMasks" checked><span>Show</span></label>
+          <button type="button" class="btn btn-quiet btn-small" id="clearMasks">Clear masks</button>
+        </div>
+
+        <div class="toolbar" id="resultTools" role="toolbar" aria-label="Result view" hidden>
+          <fieldset class="seg" aria-label="Show">
+            <legend class="sr-only">Show</legend>
+            <label><input type="radio" name="rview" value="original"><span>Original</span></label>
+            <label><input type="radio" name="rview" value="carved" checked><span>Seam carved</span></label>
+            <label><input type="radio" name="rview" value="naive"><span>Naive scale</span></label>
+          </fieldset>
+          <label class="switch switch-compact"><input type="checkbox" id="compareOn" checked><span class="switch-track" aria-hidden="true"></span><span>Compare</span></label>
+          <a class="btn btn-primary btn-small" id="downloadBtn" href="#" download>Download</a>
+        </div>
+      </div>
+
+      <div class="stage" id="stage">
+        <canvas id="stageCanvas" aria-label="Image stage"></canvas>
+        <div class="brush-ring" id="brushRing" aria-hidden="true"></div>
+        <div class="divider" id="divider" role="slider" tabindex="0" aria-label="Comparison divider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" hidden>
+          <span class="divider-grip" aria-hidden="true"></span>
+        </div>
+
+        <div class="empty" id="emptyState">
+          <svg class="empty-art" viewBox="0 0 240 150" aria-hidden="true">
+            <defs>
+              <pattern id="px" width="12" height="12" patternUnits="userSpaceOnUse">
+                <rect width="11" height="11" rx="1.5" class="empty-px"/>
+              </pattern>
+            </defs>
+            <rect x="0" y="0" width="240" height="150" fill="url(#px)"/>
+            <path class="empty-seam" d="M126 0c-6 18 10 26 4 44s-18 24-10 44 14 28 6 62"/>
+            <path class="empty-seam empty-seam-2" d="M66 0c8 20-8 30-2 50s16 30 6 52-4 32-2 48"/>
+          </svg>
+          <h1 class="empty-title">Resize a photo by removing what nobody will miss.</h1>
+          <p class="empty-copy">Seam carving looks for the least noticeable path of pixels running through an image, a seam, and removes it. It repeats that hundreds of times, so empty sky and plain walls shrink while people and edges keep their shape. Load a photo, pick a new width or height, and watch Caire carve it live.</p>
+          <div class="empty-actions">
+            <button type="button" class="btn btn-primary" id="loadSampleBtn">Load the sample photo</button>
+            <label class="btn btn-quiet file-btn">
+              <input type="file" id="fileInput2" accept=".jpg,.jpeg,.png,.bmp,.gif,image/jpeg,image/png,image/bmp,image/gif">
+              <span>Choose an image</span>
+            </label>
+          </div>
+          <p class="hint">JPEG, PNG, BMP or GIF, up to 25 MB and 40 megapixels. You can also drop a file or paste one.</p>
+        </div>
+      </div>
+
+      <div class="telemetry" id="telemetry">
+        <div class="progress" role="progressbar" aria-label="Carving progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress">
+          <span class="progress-fill" id="progressFill"></span>
+        </div>
+        <div class="readouts">
+          <span class="status" id="statusText">Load an image to begin.</span>
+          <span class="readout" id="roSeams" hidden><b id="roDone">0</b> / <span id="roTotal">0</span> seams</span>
+          <span class="badge" id="roPass" hidden>horizontal</span>
+          <span class="readout" id="roSize" hidden></span>
+          <span class="readout" id="roElapsed" hidden></span>
+          <span class="readout" id="roRate" hidden></span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="history" aria-label="Run history">
+    <h2 class="history-title">Runs</h2>
+    <div class="history-strip" id="historyStrip" role="list">
+      <span class="hint history-empty">Finished runs appear here. Click one to bring back its settings and result.</span>
+    </div>
+  </footer>
+
+  <div class="drop-overlay" id="dropOverlay" hidden>
+    <div class="drop-card">Drop to load this image</div>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
