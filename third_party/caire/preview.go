@@ -1,8 +1,16 @@
+//go:build caire_gui
+
+// squishless: the Gio preview window is opt-in (-tags caire_gui), so the library
+// builds without cgo or GUI system libraries. See preview_nogui.go.
+
 package caire
 
 import (
 	"os"
 )
+
+// squishless: tells Process that the preview window is built in.
+const previewAvailable = true
 
 // showPreview spawns a new Gio GUI window and updates its content with the resized image received from a channel.
 func (p *Processor) showPreview(

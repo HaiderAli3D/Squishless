@@ -1,3 +1,8 @@
+//go:build caire_gui
+
+// squishless: the Gio preview window is opt-in (-tags caire_gui), so the library
+// builds without cgo or GUI system libraries. See preview_nogui.go.
+
 package caire
 
 import (
@@ -47,9 +52,6 @@ const (
 )
 
 var (
-	maxScreenX float32 = 1280
-	maxScreenY float32 = 720
-
 	defaultBkgColor  = color.Transparent
 	defaultFillColor = color.Black
 )

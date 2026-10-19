@@ -2,7 +2,8 @@
 
 ## Requirements
 
-- Go 1.22+
+- Go 1.22+ (no cgo or C compiler needed; caire's Gio preview window is excluded unless
+  you build with `-tags caire_gui`)
 - Optional: Node.js, only to syntax-check the UI scripts with `node --check`.
 
 There is no frontend build step. The UIs are plain HTML, CSS and JavaScript that are
@@ -30,6 +31,7 @@ go vet ./...
 go test ./...                       # fastcarve, Squishless server, Studio server
 go test -race ./...                 # slower, checks for data races
 (cd third_party/caire && go test .) # the patched library (separate module)
+(cd third_party/caire && go vet -tags caire_gui .)  # with caire's Gio preview window
 node --check cmd/squishless/web/app.js
 node --check cmd/squishless-studio/web/app.js
 ```

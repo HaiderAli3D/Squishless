@@ -17,6 +17,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - name: Download modules
+        shell: bash
+        run: for i in 1 2 3; do go mod download && break; sleep 15; done
       - name: Test
         run: go test ./...
       - name: Build

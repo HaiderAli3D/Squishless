@@ -84,6 +84,12 @@ Every change is marked with a `squishless:` comment; the additions are mostly in
   steps so they stay aligned; the inserted-seam table records only real insertions, one
   list per orientation; and the user's face angle is no longer overwritten by the first
   vertical step.
+- **Desktop preview is opt-in.** caire's own preview window uses the Gio GUI toolkit,
+  which needs cgo and GUI system libraries on Linux and macOS. Squishless Studio never
+  opens that window, so `gui.go`, `draw.go` and `preview.go` now build only with
+  `-tags caire_gui`. Without the tag, `Processor.Preview` is switched off with a warning.
+  This is what lets both apps build anywhere with plain `go build` and cross-compile
+  with `CGO_ENABLED=0`.
 - **Percentage on square images.** caire's percentage mode resized square sources
   uniformly and ignored per-axis values. That shortcut now only applies when both
   percentages are equal.

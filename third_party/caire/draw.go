@@ -1,3 +1,8 @@
+//go:build caire_gui
+
+// squishless: the Gio preview window is opt-in (-tags caire_gui), so the library
+// builds without cgo or GUI system libraries. See preview_nogui.go.
+
 package caire
 
 import (
@@ -8,13 +13,6 @@ import (
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"github.com/esimov/caire/utils"
-)
-
-type ShapeType string
-
-const (
-	Circle ShapeType = "circle"
-	Line   ShapeType = "line"
 )
 
 // DrawSeam visualizes the seam carver in action when the preview mode is activated.

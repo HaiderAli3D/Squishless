@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"os"
 	"image"
 	"image/draw"
 	"io"
@@ -505,6 +506,11 @@ func (p *Processor) Process(r io.Reader, w io.Writer) error {
 
 	img := imgToNRGBA(src)
 
+	// squishless: builds without the caire_gui tag have no preview window.
+	if p.Preview && !previewAvailable {
+		fmt.Fprintln(os.Stderr, "caire: the preview window is not included in this build (rebuild with -tags caire_gui); continuing without it")
+		p.Preview = false
+	}
 	if p.Preview {
 		guiWidth := img.Bounds().Max.X
 		guiHeight := img.Bounds().Max.Y

@@ -19,6 +19,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - name: Download modules
+        shell: bash
+        run: for i in 1 2 3; do go mod download && break; sleep 15; done
       - name: Vet
         run: go vet ./...
       - name: Test
@@ -30,6 +33,10 @@ jobs:
         run: |
           go build ./cmd/squishless
           go build ./cmd/squishless-studio
+      - name: Build caire with its preview window (Windows needs no cgo for it)
+        if: runner.os == 'Windows'
+        working-directory: third_party/caire
+        run: go vet -tags caire_gui .
 
   race:
     runs-on: ubuntu-latest
@@ -38,6 +45,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - name: Download modules
+        shell: bash
+        run: for i in 1 2 3; do go mod download && break; sleep 15; done
       - run: go test -race ./...
       - name: Check UI scripts
         run: |
