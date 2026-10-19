@@ -1,14 +1,14 @@
-# Caire Resize guide
+# Squishless guide
 
-Caire Resize changes the size or shape of your images with **seam carving**. Instead of
+Squishless changes the size or shape of your images with **seam carving**. Instead of
 squashing the whole picture (plain resize) or cutting off the edges (crop), it removes or
 duplicates thin, low-detail paths of pixels. The subject keeps its proportions; the
 background gives way.
 
-Start it with `go run ./resizer` or by running `caire-resize.exe` (see
+Start it with `go run ./cmd/squishless` or by running `squishless.exe` (see
 [Getting started](getting-started.md)). It opens at <http://127.0.0.1:7878>.
 
-![Caire Resize](images/caire-resize.png)
+![Squishless](images/squishless.png)
 
 ## The basic workflow
 
@@ -70,13 +70,13 @@ outlined).
 If you change a setting after resizing, the row says *Settings changed, resize again* and
 the panel notes *Made with earlier settings*. Press **Resize all** again to update.
 
-![Side-by-side view](images/caire-resize-side-by-side.png)
+![Side-by-side view](images/squishless-side-by-side.png)
 
 ## Mark areas: keep or remove things
 
 Click **Mark areas** on an image to paint directly on it.
 
-![Mark areas](images/caire-resize-mark-areas.png)
+![Mark areas](images/squishless-mark-areas.png)
 
 | Brush | Color | Effect |
 | --- | --- | --- |

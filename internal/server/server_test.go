@@ -43,7 +43,7 @@ func pngBytes(t testing.TB, img image.Image) []byte {
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	static := fstest.MapFS{
-		"index.html":         {Data: []byte("<!doctype html><title>Caire Studio</title>")},
+		"index.html":         {Data: []byte("<!doctype html><title>Squishless Studio</title>")},
 		"samples/sample.png": {Data: pngBytes(t, testImage(32, 24))},
 		"samples/notes.txt":  {Data: []byte("not an image")},
 	}
@@ -172,7 +172,7 @@ func TestStaticAndSamples(t *testing.T) {
 	}
 	b, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
-	if resp.StatusCode != 200 || !strings.Contains(string(b), "Caire Studio") {
+	if resp.StatusCode != 200 || !strings.Contains(string(b), "Squishless Studio") {
 		t.Fatalf("index: %d %q", resp.StatusCode, b)
 	}
 

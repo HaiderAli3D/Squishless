@@ -1,6 +1,6 @@
 package caire
 
-// caire-studio: tests for the programmatic hooks added in studio.go / processor.go.
+// squishless: tests for the programmatic hooks added in studio.go / processor.go.
 
 import (
 	"errors"

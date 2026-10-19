@@ -28,7 +28,7 @@ var (
 var (
 	sobel       *image.NRGBA
 	energySeams = make([][]Seam, 0)
-	// caire-studio: seams inserted during vertical (rotated) passes, kept apart from
+	// squishless: seams inserted during vertical (rotated) passes, kept apart from
 	// the horizontal ones because their coordinates live in a different space.
 	vEnergySeams = make([][]Seam, 0)
 )
@@ -111,7 +111,7 @@ func (c *Carver) ComputeSeams(p *Processor, img *image.NRGBA) (*image.NRGBA, err
 				Dim:    width,
 			},
 		}
-		// caire-studio: use a local angle so a vertical pass does not overwrite the
+		// squishless: use a local angle so a vertical pass does not overwrite the
 		// user's angle for the horizontal passes that follow in a two-axis resize.
 		angle := p.FaceAngle
 		if p.vRes {
@@ -138,7 +138,7 @@ func (c *Carver) ComputeSeams(p *Processor, img *image.NRGBA) (*image.NRGBA, err
 	// Traverse the pixel data of the binary file used for protecting the regions
 	// which we do not want to be altered by the seam carver,
 	// obtain the white patches and apply it to the sobel image.
-	// caire-studio: masks set in memory (SetMasks) have no MaskPath, so only check the mask.
+	// squishless: masks set in memory (SetMasks) have no MaskPath, so only check the mask.
 	if p.Mask != nil {
 		p.DebugMask = image.NewNRGBA(img.Bounds())
 
@@ -163,7 +163,7 @@ func (c *Carver) ComputeSeams(p *Processor, img *image.NRGBA) (*image.NRGBA, err
 	// Traverse the pixel data of the binary file used to remove the image regions
 	// we do not want to be retained in the final image, obtain the white patches,
 	// but this time inverse the colors to black and merge it back to the sobel image.
-	// caire-studio: masks set in memory (SetMasks) have no RMaskPath, so only check the mask.
+	// squishless: masks set in memory (SetMasks) have no RMaskPath, so only check the mask.
 	if p.RMask != nil {
 		p.DebugMask = image.NewNRGBA(img.Bounds())
 
@@ -215,7 +215,7 @@ func (c *Carver) ComputeSeams(p *Processor, img *image.NRGBA) (*image.NRGBA, err
 	// Increase the energy value for each of the selected seam from the seams table
 	// in order to avoid picking the same seam over and over again.
 	// We expand the energy level of the selected seams to have a better redistribution.
-	// caire-studio: only the seams inserted in the current orientation are used.
+	// squishless: only the seams inserted in the current orientation are used.
 	for _, seams := range *insertedSeams(p.vRes) {
 		for _, seam := range seams {
 			sobel.Set(seam.X, seam.Y, color.White)
@@ -309,7 +309,7 @@ func (c *Carver) FindLowestEnergySeams(p *Processor) []Seam {
 		seams = append(seams, Seam{X: px, Y: y})
 	}
 
-	// caire-studio: the seam is recorded by Processor.enlarge (see recordInsertedSeam),
+	// squishless: the seam is recorded by Processor.enlarge (see recordInsertedSeam),
 	// so seams removed while shrinking are never painted onto later energy maps.
 	return seams
 }

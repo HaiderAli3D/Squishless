@@ -26,18 +26,18 @@ through them first.
 The *Blur radius* and *Edge threshold* settings in both apps change step 1: more blur
 hides fine texture, and a threshold sets weak edges to zero.
 
-## Why Caire Resize is about 50× faster
+## Why Squishless is about 50× faster
 
-Caire Studio runs the original caire library, which recomputes the blur, the Sobel
+Squishless Studio runs the original caire library, which recomputes the blur, the Sobel
 energy and the full dynamic-programming table on a fresh image copy for every single seam.
 That is easy to follow (and great for watching it happen), but slow:
 
-| Job | caire (Studio) | fastcarve (Resize) |
+| Job | caire (Squishless Studio) | fastcarve (Squishless) |
 | --- | --- | --- |
 | `sample.jpg` 670 × 447, width -30% | ~5.5 s | ~0.1 s |
 | `portrait-field.jpg` 1000 × 650 to 650 wide | ~21 s | ~0.1-0.15 s |
 
-Caire Resize uses its own engine, `internal/fastcarve`, which gives the same kind of result
+Squishless uses its own engine, `internal/fastcarve`, which gives the same kind of result
 with much less work:
 
 - **The energy map is computed once** and then patched incrementally. Removing a seam only
@@ -62,8 +62,8 @@ work grows with the number of pixels times the number of seams.
 
 ## The `third_party/caire` patch
 
-`third_party/caire` is caire v1.5.0 (MIT License) with a small patch used by Caire Studio.
-Every change is marked with a `caire-studio:` comment; the additions are mostly in
+`third_party/caire` is caire v1.5.0 (MIT License) with a small patch used by Squishless Studio.
+Every change is marked with a `squishless:` comment; the additions are mostly in
 `studio.go`, with tests in `studio_test.go`. Why it was needed:
 
 - **No progress hook.** Upstream only reports progress to its own desktop preview window.

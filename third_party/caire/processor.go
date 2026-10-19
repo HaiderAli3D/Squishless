@@ -63,7 +63,7 @@ type Processor struct {
 	FaceDetect     bool
 	vRes           bool
 
-	// caire-studio: optional hooks used to drive a live preview without the Gio GUI.
+	// squishless: optional hooks used to drive a live preview without the Gio GUI.
 	// OnStart is called once, right before carving begins, with the (possibly pre-scaled)
 	// source size and the final target size. OnFrame is called synchronously after every
 	// removed/inserted seam; returning a non-nil error aborts the resize with that error.
@@ -185,7 +185,7 @@ func (p *Processor) Resize(img *image.NRGBA) (image.Image, error) {
 		// If the image is resized both horizontally and vertically we need
 		// to rotate the image each time when invoking the shrink function.
 		// Otherwise we rotate the image only once, right before calling this function.
-		// caire-studio: rotate the masks together with the image, otherwise they drift out of sync.
+		// squishless: rotate the masks together with the image, otherwise they drift out of sync.
 		if resizeXY {
 			dx, dy = img.Bounds().Dy(), img.Bounds().Dx()
 			img = rotateImage90(img)
@@ -232,7 +232,7 @@ func (p *Processor) Resize(img *image.NRGBA) (image.Image, error) {
 		p.vRes = true
 		dx, dy := img.Bounds().Dx(), img.Bounds().Dy()
 
-		// caire-studio: rotate the masks together with the image, otherwise they drift out of sync.
+		// squishless: rotate the masks together with the image, otherwise they drift out of sync.
 		if resizeXY {
 			dx, dy = img.Bounds().Dy(), img.Bounds().Dx()
 			img = rotateImage90(img)
@@ -280,7 +280,7 @@ func (p *Processor) Resize(img *image.NRGBA) (image.Image, error) {
 
 		// In case pw and ph is zero, it means that the target image is square.
 		// In this case we can simply resize the image without running the carving operation.
-		// caire-studio: only when both percentages are equal; otherwise the per-axis targets
+		// squishless: only when both percentages are equal; otherwise the per-axis targets
 		// differ and the image has to be carved like any other (it was scaled to a square).
 		if p.Percentage && pw == 0 && ph == 0 && p.NewWidth == p.NewHeight {
 			pw = c.Width - int(float64(c.Width)-(float64(p.NewWidth)/100*float64(c.Width)))
@@ -355,7 +355,7 @@ func (p *Processor) Resize(img *image.NRGBA) (image.Image, error) {
 		}
 	}
 
-	// caire-studio: report the effective carving dimensions.
+	// squishless: report the effective carving dimensions.
 	if p.OnStart != nil {
 		tw, th := img.Bounds().Dx(), img.Bounds().Dy()
 		if newWidth > 0 {
@@ -418,7 +418,7 @@ func (p *Processor) Resize(img *image.NRGBA) (image.Image, error) {
 	}
 
 	// Signal that the process is done and no more data is sent through the channel.
-	// caire-studio: only when the Gio preview is listening, otherwise the goroutine leaks.
+	// squishless: only when the Gio preview is listening, otherwise the goroutine leaks.
 	if p.Preview {
 		go func() {
 			imgWorker <- worker{
@@ -492,7 +492,7 @@ func (p *Processor) Process(r io.Reader, w io.Writer) error {
 		}
 	}
 
-	// caire-studio: reset the package level state left over by a previous run.
+	// squishless: reset the package level state left over by a previous run.
 	resetState()
 	if p.NewWidth != 0 && p.NewHeight != 0 {
 		resizeXY = true
@@ -555,7 +555,7 @@ func (p *Processor) shrink(img *image.NRGBA) (*image.NRGBA, error) {
 		draw.Draw(p.DebugMask, img.Bounds(), p.RMask, image.Point{}, draw.Over)
 	}
 
-	// caire-studio: report the frame to the hook and only feed the Gio preview when it is running.
+	// squishless: report the frame to the hook and only feed the Gio preview when it is running.
 	if err := p.emitFrame(img, seams); err != nil {
 		return nil, err
 	}
@@ -586,7 +586,7 @@ func (p *Processor) enlarge(img *image.NRGBA) (*image.NRGBA, error) {
 	}
 	seams := c.FindLowestEnergySeams(p)
 	img = c.AddSeam(img, seams, p.Debug)
-	// caire-studio: remember the inserted seam (see recordInsertedSeam).
+	// squishless: remember the inserted seam (see recordInsertedSeam).
 	recordInsertedSeam(p.vRes, seams)
 
 	if p.Mask != nil {
@@ -599,7 +599,7 @@ func (p *Processor) enlarge(img *image.NRGBA) (*image.NRGBA, error) {
 		p.DebugMask = p.RMask
 	}
 
-	// caire-studio: report the frame to the hook and only feed the Gio preview when it is running.
+	// squishless: report the frame to the hook and only feed the Gio preview when it is running.
 	if err := p.emitFrame(img, seams); err != nil {
 		return nil, err
 	}

@@ -1,47 +1,53 @@
-# Caire Resize & Caire Studio
+# Squishless
 
-Content-aware image resizing that runs on your own computer. Change a photo's width,
-height or aspect ratio and the important parts (people, buildings, faces) keep their
-shape, while empty sky, water and plain backgrounds absorb the change.
+[![CI](https://github.com/HaiderAli3D/Squishless/actions/workflows/ci.yml/badge.svg)](https://github.com/HaiderAli3D/Squishless/actions/workflows/ci.yml)
 
-![Caire Resize with the before/after slider](docs/images/caire-resize.png)
+**Resize images without squishing what matters.** Squishless changes a photo's width,
+height or aspect ratio with *seam carving*: people, buildings and faces keep their shape,
+while empty sky, water and plain backgrounds absorb the change.
 
-The project contains two local web apps. Each is a single program with its UI built in:
-you start it, and it opens in your browser. Nothing is uploaded to the internet.
+![Squishless with the before/after slider](docs/images/squishless.png)
 
-| App | What it is for | Speed |
-| --- | --- | --- |
-| **Caire Resize** (`caire-resize`) | Everyday resizing. Batch of images, presets, before/after slider, ZIP download. | About 0.1 s for a 1000 × 650 photo |
-| **Caire Studio** (`caire-studio`) | Exploring how seam carving works. Watch every seam being removed live, tweak every setting of the [caire](https://github.com/esimov/caire) library. | Seconds per image (it is the original library, step by step) |
+It runs on your own computer as a small local web app. You start one program, it opens in
+your browser, and your images never leave your machine.
 
-If you only want to resize images, use **Caire Resize**.
+- **Fast.** About 0.1-0.3 s for a typical 1000 × 650 photo.
+- **Batch.** Drop in many images, resize them all, download one by one or as a ZIP.
+- **Any size or shape.** Exact pixels, percent, fit width or fit height, plus presets
+  for common social and web formats. Shrink or enlarge.
+- **Before/after slider** to check every result, plus side-by-side and fullscreen views.
+- **Keep or remove things.** Paint areas to protect (green) or to remove first (red).
+- **Face protection** and tunable carving (blur radius, edge threshold).
 
-## Quick start
+## Download
 
-You need [Go 1.22 or newer](https://go.dev/dl/) and a current browser. Then:
+Prebuilt programs for Windows, macOS and Linux are on the
+[Releases page](https://github.com/HaiderAli3D/Squishless/releases). Unzip, run
+`squishless` (`squishless.exe` on Windows), and the app opens at <http://127.0.0.1:7878>.
+
+The builds are not code-signed, so Windows SmartScreen or macOS Gatekeeper may warn on
+first launch. See [Troubleshooting](docs/troubleshooting.md#starting-the-apps).
+
+## Build from source
+
+You need [Go 1.22 or newer](https://go.dev/dl/). Nothing else: no Node, no C compiler.
 
 ```sh
-git clone https://github.com/HaiderAli3D/caire-resize.git
-cd caire-resize
-
-# Caire Resize (opens http://127.0.0.1:7878)
-go run ./resizer
-
-# or Caire Studio (opens http://127.0.0.1:7777)
-go run .
+git clone https://github.com/HaiderAli3D/Squishless.git
+cd Squishless
+go run ./cmd/squishless                   # opens http://127.0.0.1:7878
 ```
 
-To get standalone programs you can double-click or copy to another machine:
+Or build a standalone program:
 
 ```sh
-go build -o caire-resize.exe ./resizer   # drop .exe on macOS / Linux
-go build -o caire-studio.exe .
+go build -o squishless.exe ./cmd/squishless   # drop .exe on macOS / Linux
 ```
 
-The full setup, including how to install Go, is in
-[docs/getting-started.md](docs/getting-started.md).
+[Getting started](docs/getting-started.md) has the full setup, cross-compiling and the
+command-line options.
 
-## Using Caire Resize in 30 seconds
+## Using it in 30 seconds
 
 1. Drop one or more images on the page (or click *choose files*, or paste with Ctrl+V).
 2. Pick a size: **Exact** (for example 1080 × 1080), **Percent**, **Fit width** or
@@ -50,39 +56,58 @@ The full setup, including how to install Go, is in
 4. Drag the divider in **Before and after** to compare, then **Download** one image or
    **Download all (.zip)**.
 
-Want to remove something or keep something safe? Use **Mark areas** on an image and paint
-it red (remove first) or green (keep). The full walkthrough, with tips for good results,
-is in the [Caire Resize guide](docs/caire-resize.md).
+To remove an object or keep something safe, use **Mark areas** on an image and paint it
+red (remove first) or green (keep). The [Squishless guide](docs/squishless.md) explains
+every control and has tips for good results.
+
+## Squishless Studio
+
+The repository also contains **Squishless Studio**, a lab for learning how seam carving
+works. It runs the original [esimov/caire](https://github.com/esimov/caire) library step by
+step and streams every seam to the browser as it is removed, so you can watch the image
+shrink and see how each setting changes the result. It is much slower than Squishless and
+meant for exploring, not batch work.
+
+```sh
+go run ./cmd/squishless-studio            # opens http://127.0.0.1:7777
+```
+
+![Squishless Studio carving live](docs/images/squishless-studio.png)
 
 ## Documentation
 
 | Guide | Read it when you want to... |
 | --- | --- |
 | [Getting started](docs/getting-started.md) | Install Go, build and run the apps on Windows, macOS or Linux. |
-| [Caire Resize guide](docs/caire-resize.md) | Learn every control of the fast resizer, with tips and its HTTP API. |
-| [Caire Studio guide](docs/caire-studio.md) | Use the live seam-carving lab and its HTTP API. |
-| [How it works](docs/how-it-works.md) | Understand seam carving, why the fast engine is ~50× faster, and the library patch. |
+| [Squishless guide](docs/squishless.md) | Learn every control, with tips and the HTTP API for scripting. |
+| [Squishless Studio guide](docs/squishless-studio.md) | Use the live seam-carving lab and its HTTP API. |
+| [How it works](docs/how-it-works.md) | Understand seam carving, why Squishless is ~50× faster than the reference library, and the library patch. |
 | [Troubleshooting & FAQ](docs/troubleshooting.md) | Fix common problems and get better-looking results. |
-| [Development](docs/development.md) | Run the tests, find your way around the code, make changes. |
+| [Development](docs/development.md) | Find your way around the code, run the tests, make releases. |
 
 ## Project layout
 
 ```
 .
-├── resizer/              Caire Resize: server, flags, embedded web UI (resizer/web)
-├── internal/fastcarve/   The fast seam-carving engine used by Caire Resize
-├── main.go               Caire Studio entry point
-├── internal/server/      Caire Studio HTTP API, job runner, live frame streaming
-├── web/                  Caire Studio web UI and sample images
-├── third_party/caire/    esimov/caire v1.5.0, vendored with a small patch
-└── docs/                 Guides and screenshots
+├── cmd/squishless/          Squishless: server, flags, embedded web UI (web/)
+├── cmd/squishless-studio/   Squishless Studio: entry point, embedded web UI and samples
+├── internal/fastcarve/      The fast seam-carving engine used by Squishless
+├── internal/server/         Squishless Studio HTTP API, job runner, live frame streaming
+├── third_party/caire/       esimov/caire v1.5.0, vendored with a small patch
+└── docs/                    Guides and screenshots
 ```
+
+## Contributing
+
+Issues and pull requests are welcome. Please run `go vet ./...` and `go test ./...`
+before opening a pull request; [Development](docs/development.md) has the details.
 
 ## Credits
 
-- Seam carving algorithm: Shai Avidan and Ariel Shamir, *Seam Carving for Content-Aware
-  Image Resizing* (SIGGRAPH 2007).
-- [esimov/caire](https://github.com/esimov/caire) (MIT License) by Endre Simo, vendored in
+- Seam carving: Shai Avidan and Ariel Shamir, *Seam Carving for Content-Aware Image
+  Resizing* (SIGGRAPH 2007).
+- [esimov/caire](https://github.com/esimov/caire) by Endre Simo (MIT License), vendored in
   `third_party/caire` with its license. Face detection uses
   [esimov/pigo](https://github.com/esimov/pigo) (MIT License).
-- Sample photos: see [`web/samples/CREDITS.txt`](web/samples/CREDITS.txt).
+- Sample photos: see
+  [`cmd/squishless-studio/web/samples/CREDITS.txt`](cmd/squishless-studio/web/samples/CREDITS.txt).

@@ -1,6 +1,6 @@
 package caire
 
-// caire-studio: additions that let the library be driven programmatically
+// squishless: additions that let the library be driven programmatically
 // (live per-seam frames, repeatable runs, in-memory masks) without the Gio GUI.
 
 import (

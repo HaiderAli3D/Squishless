@@ -1,17 +1,17 @@
-# Caire Studio guide
+# Squishless Studio guide
 
-Caire Studio is a lab for [esimov/caire](https://github.com/esimov/caire), the
+Squishless Studio is a lab for [esimov/caire](https://github.com/esimov/caire), the
 content-aware image resizer this project is built around. It runs the original library and
 streams every carving step to your browser, so you can *see* seam carving work: the image
 shrinks or grows one seam at a time while the rulers and counters update.
 
 Use it to learn how the settings affect the result. For day-to-day resizing,
-[Caire Resize](caire-resize.md) is around 50× faster.
+[Squishless](squishless.md) is around 50× faster.
 
-Start it with `go run .` or `caire-studio.exe` (see [Getting started](getting-started.md)).
+Start it with `go run ./cmd/squishless-studio` or `squishless-studio.exe` (see [Getting started](getting-started.md)).
 It opens at <http://127.0.0.1:7777>.
 
-![Caire Studio](images/caire-studio.png)
+![Squishless Studio](images/squishless-studio.png)
 
 ## Feature tour
 
@@ -118,5 +118,5 @@ its own copy instead, or removes the history entry when it has none.
 
 ## Sample images
 
-The images in `web/samples` come from the caire repository (MIT) and from Unsplash via
-Lorem Picsum. Credits and licenses are in [`web/samples/CREDITS.txt`](../web/samples/CREDITS.txt).
+The images in `cmd/squishless-studio/web/samples` come from the caire repository (MIT) and from Unsplash via
+Lorem Picsum. Credits and licenses are in [`web/samples/CREDITS.txt`](../cmd/squishless-studio/web/samples/CREDITS.txt).

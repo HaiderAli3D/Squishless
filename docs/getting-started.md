@@ -2,6 +2,10 @@
 
 This guide takes you from nothing to a running app. It takes about five minutes.
 
+> **Just want to use it?** Download a ready-made program for Windows, macOS or Linux from
+> the [Releases page](https://github.com/HaiderAli3D/Squishless/releases), unzip it and run
+> `squishless`. You only need the steps below to build from source.
+
 ## 1. Install Go
 
 Both apps are written in [Go](https://go.dev). You need Go **1.22 or newer** to build them.
@@ -30,8 +34,8 @@ It should print `go version go1.22` or newer.
 ## 2. Get the code
 
 ```sh
-git clone https://github.com/HaiderAli3D/caire-resize.git
-cd caire-resize
+git clone https://github.com/HaiderAli3D/Squishless.git
+cd Squishless
 ```
 
 All dependencies are pinned in `go.mod` / `go.sum`. Go downloads them on the first build.
@@ -41,16 +45,16 @@ The caire library itself is already in the repository (`third_party/caire`).
 
 Run these from the repository folder.
 
-**Caire Resize** (the fast everyday resizer):
+**Squishless** (the fast everyday resizer):
 
 ```sh
-go run ./resizer
+go run ./cmd/squishless
 ```
 
-**Caire Studio** (the live seam-carving lab):
+**Squishless Studio** (the live seam-carving lab):
 
 ```sh
-go run .
+go run ./cmd/squishless-studio
 ```
 
 The first run takes a little longer because Go compiles everything. Then the terminal
@@ -58,8 +62,8 @@ prints the address and your browser opens it:
 
 | App | Address |
 | --- | --- |
-| Caire Resize | <http://127.0.0.1:7878> |
-| Caire Studio | <http://127.0.0.1:7777> |
+| Squishless | <http://127.0.0.1:7878> |
+| Squishless Studio | <http://127.0.0.1:7777> |
 
 Press **Ctrl+C** in the terminal to stop the app. Both apps can run at the same time.
 
@@ -70,23 +74,23 @@ or give it to someone without Go.
 
 ```sh
 # Windows
-go build -o caire-resize.exe ./resizer
-go build -o caire-studio.exe .
+go build -o squishless.exe ./cmd/squishless
+go build -o squishless-studio.exe ./cmd/squishless-studio
 
 # macOS / Linux
-go build -o caire-resize ./resizer
-go build -o caire-studio .
+go build -o squishless ./cmd/squishless
+go build -o squishless-studio ./cmd/squishless-studio
 ```
 
-Start it by double-clicking it (Windows) or running `./caire-resize`.
+Start it by double-clicking it (Windows) or running `./squishless`.
 
 **Building for another computer.** Go cross-compiles with two environment variables.
 For example, from any OS:
 
 ```sh
-GOOS=windows GOARCH=amd64 go build -o caire-resize.exe ./resizer
-GOOS=darwin  GOARCH=arm64 go build -o caire-resize-mac ./resizer   # Apple Silicon
-GOOS=linux   GOARCH=amd64 go build -o caire-resize-linux ./resizer
+GOOS=windows GOARCH=amd64 go build -o squishless.exe ./cmd/squishless
+GOOS=darwin  GOARCH=arm64 go build -o squishless-mac ./cmd/squishless   # Apple Silicon
+GOOS=linux   GOARCH=amd64 go build -o squishless-linux ./cmd/squishless
 ```
 
 (In PowerShell, set them first: `$env:GOOS="darwin"; $env:GOARCH="arm64"`, and clear them
@@ -98,14 +102,14 @@ Both programs take the same two flags:
 
 | Flag | Default | Meaning |
 | --- | --- | --- |
-| `-addr` | `127.0.0.1:7878` (Resize), `127.0.0.1:7777` (Studio) | Address and port to listen on. |
+| `-addr` | `127.0.0.1:7878` (Squishless), `127.0.0.1:7777` (Studio) | Address and port to listen on. |
 | `-open` | `true` | Open the browser on start. Use `-open=false` to skip it. |
 
 Examples:
 
 ```sh
-caire-resize.exe -addr 127.0.0.1:9000
-go run ./resizer -open=false
+squishless.exe -addr 127.0.0.1:9000
+go run ./cmd/squishless -open=false
 ```
 
 The apps only listen on your own computer (`127.0.0.1`) by default, so other devices on
@@ -114,6 +118,6 @@ your network cannot reach them. If you change `-addr` to listen on all interface
 
 ## Next steps
 
-- [Caire Resize guide](caire-resize.md): every control explained.
-- [Caire Studio guide](caire-studio.md): the live seam lab.
+- [Squishless guide](squishless.md): every control explained.
+- [Squishless Studio guide](squishless-studio.md): the live seam lab.
 - [Troubleshooting & FAQ](troubleshooting.md) if something does not work.

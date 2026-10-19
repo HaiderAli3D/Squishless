@@ -9,16 +9,20 @@ Go is not installed or not on `PATH`. Install it from <https://go.dev/dl/> and o
 **`listen on 127.0.0.1:7878: bind: address already in use`** (or *Only one usage of each
 socket address...*)
 The app is already running (check other terminals and the system tray), or another
-program uses the port. Close it, or pick another port: `caire-resize.exe -addr 127.0.0.1:7900`.
+program uses the port. Close it, or pick another port: `squishless.exe -addr 127.0.0.1:7900`.
 
 **The browser does not open.**
-Open the address printed in the terminal yourself (<http://127.0.0.1:7878> for Resize,
+Open the address printed in the terminal yourself (<http://127.0.0.1:7878> for Squishless,
 <http://127.0.0.1:7777> for Studio). Some locked-down systems block programs from
 launching the browser.
 
 **Windows SmartScreen says the program is unrecognized.**
-The `.exe` you built yourself is not code-signed. Choose *More info → Run anyway*, or run
-it with `go run ./resizer`.
+The `.exe` files (release downloads and your own builds) are not code-signed. Choose *More info → Run anyway*, or run
+it with `go run ./cmd/squishless`.
+
+**macOS says the app "cannot be opened because the developer cannot be verified".**
+The release builds are not notarized. Right-click (or Control-click) the program, choose
+*Open*, then *Open* again. On Linux and macOS you may also need `chmod +x squishless`.
 
 **Windows Firewall asks for access.**
 The apps only listen on `127.0.0.1`, so they work even if you click *Cancel*.
@@ -27,7 +31,7 @@ The apps only listen on `127.0.0.1`, so they work even if you click *Cancel*.
 Go downloads the dependencies and compiles everything once. Later runs start in about a
 second. Build an `.exe` to skip compiling entirely.
 
-## Using Caire Resize
+## Using Squishless
 
 **"More than 4x the original" / "Result over 50 megapixels"**
 These are safety limits. Use a smaller target, or resize in a normal image editor first.
@@ -86,7 +90,7 @@ Only if you start it with an `-addr` that listens on your network (for example
 `-addr 0.0.0.0:7878`). There is no login, so only do that on a trusted network.
 
 **Which app should I use?**
-Caire Resize for real work (fast, batch, downloads). Caire Studio to watch and learn how
+Squishless for real work (fast, batch, downloads). Squishless Studio to watch and learn how
 seam carving behaves with each setting.
 
 **Does it work on macOS and Linux?**

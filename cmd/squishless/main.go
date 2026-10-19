@@ -1,4 +1,4 @@
-// Command caire-resize is a small local app for content-aware image resizing.
+// Command squishless is a small local app for content-aware image resizing.
 package main
 
 import (
@@ -32,7 +32,7 @@ func main() {
 		IdleTimeout:       2 * time.Minute,
 	}
 
-	fmt.Printf("Caire Resize running at %s (Ctrl+C to quit)\n", url)
+	fmt.Printf("Squishless running at %s (Ctrl+C to quit)\n", url)
 	if *open {
 		go openBrowser(url)
 	}

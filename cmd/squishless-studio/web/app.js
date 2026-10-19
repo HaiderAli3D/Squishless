@@ -1,4 +1,4 @@
-// Caire Studio UI. Vanilla ES module, no dependencies.
+// Squishless Studio UI. Vanilla ES module, no dependencies.
 // Sections: helpers, state, theme, source loading, settings, stage geometry
 // and rendering, mask painter, jobs and live stream, result view, history,
 // keyboard, init.
@@ -138,7 +138,7 @@ function syncThemeButton() {
 function toggleTheme() {
   const next = effectiveTheme() === 'dark' ? 'light' : 'dark';
   document.documentElement.dataset.theme = next;
-  store.set('caire.theme', next);
+  store.set('squishless-studio.theme', next);
   tokenCache = null;
   syncThemeButton();
   scheduleRender();
@@ -473,7 +473,7 @@ function refreshSettingsUI() {
   el.h.setAttribute('aria-invalid', sizeMsg ? 'true' : 'false');
 
   renderPlan(ui, src, v);
-  store.set('caire.params', ui);
+  store.set('squishless-studio.params', ui);
   scheduleRender();
 }
 
@@ -1024,7 +1024,7 @@ function setBrushSize(n) {
   state.brush.size = clamp(Math.round(n), 4, 160);
   el.brushSize.value = String(state.brush.size);
   el.brushOut.textContent = String(state.brush.size);
-  store.set('caire.brush', state.brush.size);
+  store.set('squishless-studio.brush', state.brush.size);
   if (lastPointer) updateRing(lastPointer);
 }
 
@@ -1125,7 +1125,7 @@ async function run() {
   postChain = send.then(() => {}, () => {});
   let res;
   try { res = await send; }
-  catch (_) { return failJob(job, "Couldn't reach the Caire Studio server. Check that it is still running.", 'Connection failed'); }
+  catch (_) { return failJob(job, "Couldn't reach the Squishless Studio server. Check that it is still running.", 'Connection failed'); }
   if (state.job !== job) { cancelSuperseded(res); return; }
   if (!res.ok) {
     const msg = await readError(res);
@@ -1229,7 +1229,7 @@ function connect(job) {
       job.lostTimer = setTimeout(() => {
         job.lostTimer = 0;
         if (state.job === job && isActive(job) && job.reconnecting) {
-          failJob(job, "Lost the live connection to the server. Check that Caire Studio is still running, then run again.", 'Connection lost');
+          failJob(job, "Lost the live connection to the server. Check that Squishless Studio is still running, then run again.", 'Connection lost');
         }
       }, LOST_AFTER_MS);
     }
@@ -1383,7 +1383,7 @@ function syncDownload() {
   if (!r) return;
   const fmt = radioValue('format') || 'png';
   el.downloadBtn.href = `/api/jobs/${encodeURIComponent(r.id)}/result?format=${fmt}`;
-  el.downloadBtn.setAttribute('download', `caire-${r.width}x${r.height}.${fmt}`);
+  el.downloadBtn.setAttribute('download', `squishless-${r.width}x${r.height}.${fmt}`);
   el.downloadBtn.textContent = `Download ${fmt === 'jpg' ? 'JPEG' : 'PNG'}`;
 }
 
@@ -1405,7 +1405,7 @@ async function downloadResult(e) {
   if (!r) return;
   e.preventDefault();
   const fmt = radioValue('format') || 'png';
-  const name = `caire-${r.width}x${r.height}.${fmt}`;
+  const name = `squishless-${r.width}x${r.height}.${fmt}`;
   try {
     const res = await fetch(el.downloadBtn.href);
     if (res.ok) { saveBlob(await res.blob(), name); return; }
@@ -1494,7 +1494,7 @@ function addHistory(result) {
   state.history.unshift(result);
   const evicted = state.history.splice(20); // the server keeps at most 20 results too
   compactHistory(evicted);
-  store.set('caire.history', state.history.map((h) => ({ ui: h.ui, width: h.width, height: h.height, source: h.source.name })));
+  store.set('squishless-studio.history', state.history.map((h) => ({ ui: h.ui, width: h.width, height: h.height, source: h.source.name })));
   renderHistory();
 }
 
@@ -1548,7 +1548,7 @@ async function restoreHistory(h) {
       renderHistory();
       toast('That run is no longer on the server, so it was removed from the history.', 'error');
     } else {
-      toast("Couldn't bring back that run. Check that Caire Studio is still running.", 'error');
+      toast("Couldn't bring back that run. Check that Squishless Studio is still running.", 'error');
     }
     return;
   }
@@ -1657,8 +1657,8 @@ function bind() {
 
 function init() {
   syncThemeButton();
-  applyForm(store.get('caire.params', DEFAULTS) || DEFAULTS);
-  setBrushSize(Number(store.get('caire.brush', 32)) || 32);
+  applyForm(store.get('squishless-studio.params', DEFAULTS) || DEFAULTS);
+  setBrushSize(Number(store.get('squishless-studio.brush', 32)) || 32);
   bind();
   resizeStage();
   updateTelemetry();

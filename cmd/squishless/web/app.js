@@ -41,14 +41,14 @@
     blur: DEFAULT_BLUR, sobel: DEFAULT_SOBEL,
   };
   try {
-    const saved = JSON.parse(localStorage.getItem('caire-resize-settings') || 'null');
+    const saved = JSON.parse(localStorage.getItem('squishless-settings') || 'null');
     if (saved && typeof saved === 'object') Object.assign(settings, saved);
   } catch (_) { /* storage unavailable */ }
   settings.blur = clampInt(settings.blur, 0, 7, DEFAULT_BLUR);
   settings.sobel = clampInt(settings.sobel, 0, 64, DEFAULT_SOBEL);
 
   function saveSettings() {
-    try { localStorage.setItem('caire-resize-settings', JSON.stringify(settings)); } catch (_) { /* ignore */ }
+    try { localStorage.setItem('squishless-settings', JSON.stringify(settings)); } catch (_) { /* ignore */ }
   }
 
   function applySettingsToUI() {
@@ -603,7 +603,7 @@
   }
 
   // ---------- Compare (inline preview + fullscreen dialog share one viewer) ----------
-  const VIEW_KEY = 'caire-resize-view';
+  const VIEW_KEY = 'squishless-view';
   let cmpMode = 'slider';
   try { if (localStorage.getItem(VIEW_KEY) === 'side') cmpMode = 'side'; } catch (_) { /* storage unavailable */ }
 

@@ -1,4 +1,4 @@
-// Package server implements the Caire Studio HTTP API: static UI files, sample
+// Package server implements the Squishless Studio HTTP API: static UI files, sample
 // listing, and seam-carving jobs with live progress streamed over SSE.
 package server
 
@@ -101,7 +101,7 @@ func (p *Params) validate() error {
 	return nil
 }
 
-// Server is the HTTP handler for Caire Studio.
+// Server is the HTTP handler for Squishless Studio.
 type Server struct {
 	static   fs.FS
 	jobs     *Manager
@@ -109,7 +109,7 @@ type Server struct {
 	decoding chan struct{} // semaphore bounding concurrent upload decoding
 }
 
-// New returns the Caire Studio handler. static is the web root (index.html,
+// New returns the Squishless Studio handler. static is the web root (index.html,
 // app.js, styles.css, samples/...).
 func New(static fs.FS) http.Handler {
 	return newServer(static)
@@ -134,7 +134,7 @@ func newServer(static fs.FS) *Server {
 // cancel the user's run), then dispatches to the routes.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !allowedHost(r.Host) {
-		writeError(w, http.StatusMisdirectedRequest, "unexpected Host header; open Caire Studio via localhost or an IP address")
+		writeError(w, http.StatusMisdirectedRequest, "unexpected Host header; open Squishless Studio via localhost or an IP address")
 		return
 	}
 	if r.Method != http.MethodGet && r.Method != http.MethodHead && !sameOrigin(r) {

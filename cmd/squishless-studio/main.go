@@ -1,4 +1,4 @@
-// Command caire-studio serves a local web GUI for experimenting with
+// Command squishless-studio serves a local web GUI for experimenting with
 // esimov/caire content-aware (seam carving) image resizing.
 package main
 
@@ -14,7 +14,7 @@ import (
 	"runtime"
 	"time"
 
-	"caire-studio/internal/server"
+	"github.com/HaiderAli3D/squishless/internal/server"
 )
 
 //go:embed all:web
@@ -35,7 +35,7 @@ func main() {
 		log.Fatalf("listen %s: %v", *addr, err)
 	}
 	url := browserURL(ln.Addr())
-	log.Printf("Caire Studio running at %s", url)
+	log.Printf("Squishless Studio running at %s", url)
 
 	if *open {
 		go func() {

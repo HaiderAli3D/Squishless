@@ -13,25 +13,25 @@ page.
 
 | Path | What is in it |
 | --- | --- |
-| `resizer/main.go` | Caire Resize entry point: flags, listener, browser launch, graceful shutdown. |
-| `resizer/server.go` | `POST /api/resize`: form validation, size limits, a semaphore that limits concurrent resizes, encoding. |
-| `resizer/engine.go` | Wires the server to `internal/fastcarve` (build tag `!nofastcarve`, so tests can stub the engine). |
-| `resizer/web/` | Caire Resize UI: batch list, size modes, carving sliders, before/after viewer, Mark areas editor, client-side ZIP writer. |
+| `cmd/squishless/main.go` | Squishless entry point: flags, listener, browser launch, graceful shutdown. |
+| `cmd/squishless/server.go` | `POST /api/resize`: form validation, size limits, a semaphore that limits concurrent resizes, encoding. |
+| `cmd/squishless/engine.go` | Wires the server to `internal/fastcarve` (build tag `!nofastcarve`, so tests can stub the engine). |
+| `cmd/squishless/web/` | Squishless UI: batch list, size modes, carving sliders, before/after viewer, Mark areas editor, client-side ZIP writer. |
 | `internal/fastcarve/` | The fast seam-carving engine: `fastcarve.go` (API, scale-then-carve), `carver.go` (incremental energy + DP), `image.go` (packed pixels, scaling, transpose), `faces.go` (pigo face detection with the embedded `facefinder` cascade). |
-| `main.go` | Caire Studio entry point. |
-| `internal/server/` | Caire Studio API: job manager (`jobs.go`), frame encoding (`frames.go`), handlers (`server.go`). |
-| `web/` | Caire Studio UI and `web/samples`. |
+| `cmd/squishless-studio/main.go` | Squishless Studio entry point: flags, listener, browser launch, embedded UI. |
+| `internal/server/` | Squishless Studio API: job manager (`jobs.go`), frame encoding (`frames.go`), handlers (`server.go`). |
+| `cmd/squishless-studio/web/` | Squishless Studio UI and its sample images (`web/samples`). |
 | `third_party/caire/` | Patched esimov/caire v1.5.0, used through a `replace` directive in `go.mod`. See [How it works](how-it-works.md#the-third_partycaire-patch). |
 
 ## Tests
 
 ```sh
 go vet ./...
-go test ./...                       # fastcarve, Resize server, Studio server
+go test ./...                       # fastcarve, Squishless server, Studio server
 go test -race ./...                 # slower, checks for data races
 (cd third_party/caire && go test .) # the patched library (separate module)
-node --check resizer/web/app.js
-node --check web/app.js
+node --check cmd/squishless/web/app.js
+node --check cmd/squishless-studio/web/app.js
 ```
 
 Benchmarks for the engine:
@@ -61,9 +61,9 @@ cancelled. It is safe to call concurrently.
 ## Building release binaries
 
 ```sh
-go build -trimpath -ldflags "-s -w" -o caire-resize.exe ./resizer
-go build -trimpath -ldflags "-s -w" -o caire-studio.exe .
+go build -trimpath -ldflags "-s -w" -o squishless.exe ./cmd/squishless
+go build -trimpath -ldflags "-s -w" -o squishless-studio.exe ./cmd/squishless-studio
 ```
 
 `-trimpath` removes local paths from the binary and `-s -w` drops debug symbols, which
-makes the files smaller. Built binaries (`*.exe`) are ignored by git.
+makes the files smaller. Built binaries are ignored by git. Pushing a `v*` tag builds release archives for Windows, macOS and Linux automatically (see `.github/workflows/release.yml`).

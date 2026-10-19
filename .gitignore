@@ -1,5 +1,10 @@
-caire-studio.exe
+# Built binaries
 *.exe
+/squishless
+/squishless-studio
+/dist/
+
+# Local tool output
 .loki/
 .playwright-mcp/
 third_party/caire/gui_preview.gif

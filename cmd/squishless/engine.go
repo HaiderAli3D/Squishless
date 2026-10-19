@@ -6,7 +6,7 @@ import (
 	"context"
 	"image"
 
-	"caire-studio/internal/fastcarve"
+	"github.com/HaiderAli3D/squishless/internal/fastcarve"
 )
 
 func init() {

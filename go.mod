@@ -1,4 +1,4 @@
-module caire-studio
+module github.com/HaiderAli3D/squishless
 
 go 1.22
 
