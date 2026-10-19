@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version: stable
       - name: Download modules
         shell: bash
         run: for i in 1 2 3; do go mod download && break; sleep 15; done
@@ -44,7 +44,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version: stable
       - name: Download modules
         shell: bash
         run: for i in 1 2 3; do go mod download && break; sleep 15; done
@@ -53,3 +53,18 @@ jobs:
         run: |
           node --check cmd/squishless/web/app.js
           node --check cmd/squishless-studio/web/app.js
+
+  # The oldest Go version go.mod allows. (Binaries from Go 1.22 do not start on current
+  # macOS, so this runs on Linux only; releases are built with the latest Go.)
+  minimum-go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Download modules
+        shell: bash
+        run: for i in 1 2 3; do go mod download && break; sleep 15; done
+      - run: go vet ./...
+      - run: go test ./...

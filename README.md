@@ -30,7 +30,8 @@ first launch. See [Troubleshooting](docs/troubleshooting.md#starting-the-apps).
 
 ## Build from source
 
-You need [Go 1.22 or newer](https://go.dev/dl/). Nothing else: no Node, no C compiler.
+You need [Go](https://go.dev/dl/) (the latest release is best; 1.22 is the minimum).
+Nothing else: no Node, no C compiler.
 
 ```sh
 git clone https://github.com/HaiderAli3D/Squishless.git

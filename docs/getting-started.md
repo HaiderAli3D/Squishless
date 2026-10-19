@@ -8,7 +8,9 @@ This guide takes you from nothing to a running app. It takes about five minutes.
 
 ## 1. Install Go
 
-Both apps are written in [Go](https://go.dev). You need Go **1.22 or newer** to build them.
+Both apps are written in [Go](https://go.dev). Install the **latest Go release**; the
+minimum is 1.22, but on macOS use a current release, because programs built with older Go
+versions may not start on recent macOS.
 You do not need Node, npm, a C compiler or anything else: the web UI is plain HTML, CSS and
 JavaScript built into the program.
 
@@ -24,7 +26,8 @@ Open a **new** terminal and check:
 go version
 ```
 
-It should print `go version go1.22` or newer.
+It should print a version such as `go version go1.25.0` (any version from 1.22 up works
+on Windows and Linux).
 
 > **Portable Go without an installer.** Unzip a Go release anywhere and put its `bin`
 > folder on `PATH` for the current terminal:
